@@ -66,7 +66,7 @@ BEGIN {
     $TEMPDIR = catdir($BASEDIR, 'web', 'tmp'); #FIXME move out of web
     @ISA     = ( qw (Exporter Class::Accessor) );
     @EXPORT  = qw( get_session_id check_filename_taint check_taint gunzip gzip 
-                   send_email get_defaults set_defaults url_for api_url_for get_job 
+                   send_email get_defaults set_defaults internal_url_for url_for api_url_for get_job 
                    schedule_job render_template ftp_get_path ftp_get_file split_url
                    parse_proxy_response jwt_decode_token add_user write_log log_history
                    download_url_for get_command_path get_tiny_link
@@ -829,7 +829,7 @@ sub get_tiny_link {
     #FIXME: Hack for tiny link service
     $url =~ s/&/;/g;
 
-    my $request_url = "https://genomevolution.org/r/yourls-api.php?signature=d57f67d3d9&action=shorturl&format=simple&url=$url";
+    my $request_url = "http://host.docker.internal:60501/yourls-api.php?signature=705e463d8f&action=shorturl&format=simple&url=$url";
 
 # mdb removed 1/8/14, issue 272
 #    my $tiny = LWP::Simple::get($request_url);
@@ -844,10 +844,12 @@ sub get_tiny_link {
 
 	$ua->timeout(10);
 	my $response = $ua->get($request_url);
-	if ($response->is_success) {
+	if ($response->code == 200 or $response->code == 400) {
         $response_url = $response->decoded_content;
 	}
 	else {
+	print STDERR "Debug Tiny URL";
+	print STDERR $response->as_string;
         cluck "Unable to produce tiny url from server falling back to url";
         return $url;
 	}
@@ -1192,6 +1194,58 @@ sub api_url_for {
     
     return $API_URL unless $path;
     return catdir($API_URL, $path);
+}
+
+
+sub internal_url_for {
+    my ($path, %params) = @_;
+
+    # Error if CONFIG not set
+    croak "CONFIG was not found." unless $CONF;
+
+    my $SERVER = 'http://localhost/';
+    my $BASE_URL = $CONF->{URL};
+
+    # Error if SERVER not found
+    croak "SERVER option not found in CONFIG." unless $SERVER;
+
+    # Configures the default scheme
+    my $scheme = $CONF->{SECURE} ? "https://" : "http://";
+
+    # SERVER may override the default scheme
+    if ($SERVER =~ /(?<scheme>https?:\/{2})/) {
+        $scheme = $+{scheme};
+    }
+
+    # Strip leading /
+    $path =~ s/^\///;
+
+    # Strip leading and trailing /
+    $BASE_URL =~ s/^\///;
+    $BASE_URL =~ s/\/$//;
+
+    # Strip BASE URL from SERVER
+    $SERVER =~ s/$BASE_URL//i;
+
+    # Strip scheme and /
+    $SERVER =~ s/\/*$//;
+    $SERVER =~ s/^https?:\/{2}//;
+    $SERVER =~ s/\/$//;
+
+    # Build up parts and ignore BASE_URL if not set
+    my @parts = (length $BASE_URL) ? ($SERVER, $BASE_URL, $path)
+                                   : ($SERVER, $path);
+
+    # Build query string from params
+    my ($query_string, @pairs) = ("", ());
+
+    foreach my $key (sort keys %params) {
+        push @pairs, $key . "=" . $params{$key};
+    }
+
+    $query_string = "?" . join("&", @pairs) if @pairs;
+
+    return $scheme . join("/", @parts) . $query_string;;
 }
 
 sub url_for {

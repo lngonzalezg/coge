@@ -25,9 +25,9 @@ sub features {
     print STDERR "JBrowse::Sequence::features gid=$gid chr=$chr start=$start end=$end\n";
 
     # Check params
-    my $null_response = $self->render(json => { "features" => [] });
     if ( $end < 0 ) {
         print STDERR "JBrowse::Sequence::features ERROR, invalid 'end' value\n";
+        my $null_response = $self->render(json => { "features" => [] });
         return $null_response;
     }
 
@@ -38,6 +38,7 @@ sub features {
     my $genome = $db->resultset('Genome')->find($gid);
     unless ($genome) {
         print STDERR "JBrowse::Sequence::features ERROR, genome '$gid' not found\n";
+        my $null_response = $self->render(json => { "features" => [] });
         return $null_response;
     }
 
@@ -48,6 +49,7 @@ sub features {
     $end   = min( $end,   $chrLen );
     if ( $start == $end ) {
         print STDERR "JBrowse::Sequence::features ERROR, start==end: start=$start end=$end chrLen=$chrLen\n";
+        my $null_response = $self->render(json => { "features" => [] });
         return $null_response;
     }
 
@@ -56,6 +58,7 @@ sub features {
         and ( not defined $user or not $user->has_access_to_genome($genome) ) )
     {
         print STDERR "JBrowse::Sequence::features ERROR, access denied\n";
+        my $null_response = $self->render(json => { "features" => [] });
         return $null_response;
     }
 
@@ -68,6 +71,7 @@ sub features {
     );
     unless ($seq && length($seq)) {
         print STDERR "JBrowse::Sequence::features ERROR, no sequence returned\n";
+        my $null_response = $self->render(json => { "features" => [] });
         return $null_response;
     }
 
@@ -79,3 +83,4 @@ sub features {
 }
 
 1;
+
