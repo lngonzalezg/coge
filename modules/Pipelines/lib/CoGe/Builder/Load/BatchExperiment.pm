@@ -79,7 +79,7 @@ sub load_batch {
         ['-files',       "'".$file_str."'", 0],
         ['-config',      $self->conf->{_CONFIG_PATH}, 0]
     ];
-    push $args, ['-nid', $nid, 0] if ($nid);
+    push @{$args}, ['-nid', $nid, 0] if ($nid);
 
     return {
         cmd => catfile($self->conf->{SCRIPTDIR}, "load_batch.pl"),

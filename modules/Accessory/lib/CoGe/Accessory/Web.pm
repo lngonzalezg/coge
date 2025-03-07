@@ -1,5 +1,5 @@
 package CoGe::Accessory::Web;
-use v5.10;
+use v5.18;
 
 use strict;
 use base 'Class::Accessor';
@@ -217,7 +217,7 @@ sub render_template {
     my $template_file = catfile(get_defaults()->{TMPLDIR}, $template_name);
 
     unless(-r $template_file) {
-        cluck "error: template=$template_file could not be found";
+        cluck("error: template=$template_file could not be found");
         return;
     }
 
@@ -850,7 +850,7 @@ sub get_tiny_link {
 	else {
 	print STDERR "Debug Tiny URL";
 	print STDERR $response->as_string;
-        cluck "Unable to produce tiny url from server falling back to url";
+        cluck("Unable to produce tiny url from server falling back to url");
         return $url;
 	}
 

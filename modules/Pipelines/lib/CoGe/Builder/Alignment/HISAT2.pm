@@ -99,19 +99,19 @@ sub hisat2_alignment {
     ];
 
     if ($encoding eq '64') {
-        push $args, ['--phred64', '', 0];
+        push @{$args}, ['--phred64', '', 0];
     }
     else {
-        push $args, ['--phred33', '', 0];
+        push @{$args}, ['--phred33', '', 0];
     }
 
     if ($read_type eq 'single') {
-    	push $args, ['-U', join(',', @$fastq), 0];
+    	push @{$args}, ['-U', join(',', @$fastq), 0];
     }
     else {
 		my ($m1, $m2) = detect_paired_end($fastq);
-    	push $args, ['-1', join(',', sort @$m1), 0];
-    	push $args, ['-2', join(',', sort @$m2), 0];
+    	push @{$args}, ['-1', join(',', sort @$m1), 0];
+    	push @{$args}, ['-2', join(',', sort @$m2), 0];
 	}
 
     my $samtools = get_command_path('SAMTOOLS');

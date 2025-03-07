@@ -126,7 +126,7 @@ sub get_name {
     my $self = shift;
     
     my $description;
-    foreach my $key (keys $self->params) {
+    foreach my $key (keys %{$self->params}) {
         next unless $key =~ /^genome_id/;
         
         my ($genome_id) = $key =~ /(\d+)$/;
