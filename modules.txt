@@ -64,3 +64,4 @@ XML::Parser
 XML::SAX::Expat
 XML::Simple
 ZMQ::LibZMQ3
+DBD::mysql
