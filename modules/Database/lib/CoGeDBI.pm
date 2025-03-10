@@ -31,6 +31,7 @@ use warnings;
 use DBI;
 use Hash::Merge::Simple qw(merge);
 use Data::Dumper;
+use Cache::FileCache;
 #use Time::HiRes qw(time);
 
 BEGIN {
@@ -538,39 +539,59 @@ sub get_features_by_range { # for JBrowse::Annotation
     my $feat_type = $opts{feat_type};
     my $dsid      = $opts{dsid} || $opts{dataset_id};
     die unless ($gid && defined $chr && defined $start && defined $stop);
-    
-    # mdb 4/24/14 - added fn.primary_name=1 constraint to keep from returning arbitrary name
-    my $query = qq{
-        SELECT l.start as locstart, l.stop as locstop, l.strand as locstrand, 
-            ft.name as type, fn.name, l.location_id, f.start, f.stop, 
-            f.feature_id, fn.primary_name, l.chromosome, f.chromosome, f.strand
-            FROM genome g
-            JOIN dataset_connector dc ON dc.genome_id = g.genome_id
-            JOIN dataset d on dc.dataset_id = d.dataset_id
-            JOIN feature f ON d.dataset_id = f.dataset_id
-            JOIN location l ON f.feature_id = l.feature_id
-            JOIN feature_name fn ON f.feature_id = fn.feature_id
-            JOIN feature_type ft ON f.feature_type_id = ft.feature_type_id
-            WHERE g.genome_id = $gid
-                AND f.chromosome = '$chr'
-                AND f.stop > $start AND f.start <= $stop
-                AND ft.feature_type_id != 4
-    };
-    
-    if ($feat_type) {
-        $query .=  " AND ft.name = '$feat_type'";
+    my $cache = Cache::FileCache->new(
+	    { 'namespace' => 'coge_gfbyr_',
+            'default_expires_in' => 300,
+   	    'auto_purge_on_get' => 1, }
+	);
+    # Create a cache key based on the query parameters
+    my $cache_key = "features_by_range:$gid:$chr";
+
+    # Try to get the results from the cache
+    my $results = $cache->get($cache_key);
+    print STDERR "Cache keys\n";
+    my @keys = $cache->get_keys();
+    print STDERR "$_\n" for @keys;
+    print STDERR "End Cache Keys\n";
+    unless ($results) {
+	print STDERR "Miss!" . $cache_key  . "\n";
+        # mdb 4/24/14 - added fn.primary_name=1 constraint to keep from returning arbitrary name
+        my $query = qq{
+            SELECT l.start as locstart, l.stop as locstop, l.strand as locstrand, 
+                ft.name as type, fn.name, l.location_id, f.start, f.stop, 
+                f.feature_id, fn.primary_name, l.chromosome, f.chromosome, f.strand, d.dataset_id, ft.feature_type_id
+                FROM genome g
+                JOIN dataset_connector dc ON dc.genome_id = g.genome_id
+                JOIN dataset d on dc.dataset_id = d.dataset_id
+                JOIN feature f ON d.dataset_id = f.dataset_id
+                JOIN location l ON f.feature_id = l.feature_id
+                JOIN feature_name fn ON f.feature_id = fn.feature_id
+                JOIN feature_type ft ON f.feature_type_id = ft.feature_type_id
+                WHERE g.genome_id = $gid AND f.chromosome = '$chr'
+        };
+
+        my $sth = $dbh->prepare($query);
+        $sth->execute();
+        $results = $sth->fetchall_arrayref({});
+
+        # Store the results in the cache
+        $cache->set($cache_key, $results);
     }
-    # mdb added 4/21/14 issue 363
-    if ($dsid) {
-        $query .= " AND dc.dataset_id = $dsid";
-    }
-    
-    my $sth = $dbh->prepare($query);
-    $sth->execute();
-    my $results = $sth->fetchall_arrayref({});
-    #print STDERR Dumper $results, "\n";
-    
-    return $results;
+
+    # Filter results in Perl
+    my @filtered_results = grep {
+        $_->{stop} > $start && $_->{start} <= $stop &&
+	$_->{feature_type_id} ne 4 &&
+        (!defined $feat_type || $_->{type} eq $feat_type) &&
+        (!defined $dsid || $_->{dataset_id} == $dsid)
+    } @$results; 
+
+    print STDERR "Cache keys\n";
+    my @keys2 = $cache->get_keys();
+    print STDERR "$_\n" for @keys2;
+    print STDERR "End Cache Keys\n";
+
+    return \@filtered_results;
 }
 
 sub get_feature_types {
