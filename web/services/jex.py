@@ -6,8 +6,8 @@ import random
 import os
 import sys
 import time
-from collections import defaultdict #Counter
-from cgi import parse_qs, escape
+from collections import defaultdict
+from urllib.parse import parse_qs
 
 import zmq
 
@@ -21,7 +21,7 @@ _defaults = {
 def not_found(environ, start_response):
     """Called if no URL matches."""
     start_response('404 NOT FOUND', [('Content-Type', 'text/plain')])
-    return [environ.get('PATH_INFO', '').lstrip('/')]
+    return [environ.get('PATH_INFO', '').lstrip('/').encode('utf-8')]
 
 def load_config(filename):
     config = {}
@@ -41,13 +41,13 @@ def load_config(filename):
 
 def stats(environ, start_response):
     sys.stderr.write('global stats\n')
-    start_response('200 OK', [('Content-Type', 'text/plain')])
+    start_response('200 OK', [('Content-Type', 'application/json')])
     response_body = { "featureDensity": 0.02,
                       "scoreMin": 0,
                       "scoreMax": 1,
                       "featureDensityByRegion" : 50000,
                     }
-    return json.dumps(response_body)
+    return [json.dumps(response_body).encode('utf-8')]
 
 def status(environ, start_response):
     start_response('200 OK', [('Content-Type', 'application/json')])
@@ -58,10 +58,10 @@ def status(environ, start_response):
         args = environ['url_args']
         identity = args['id']
     except KeyError:
-        return json.dumps({})
+        return [json.dumps({}).encode('utf-8')]
 
     if not identity:
-        return json.dumps({})
+        return [json.dumps({}).encode('utf-8')]
 
     context = zmq.Context()
     socket = context.socket(zmq.REQ)
@@ -89,7 +89,7 @@ def status(environ, start_response):
 
     socket.send_json(request, zmq.NOBLOCK)
 
-    while _defaults['max_attempts'] > counter.next() and not result:
+    while _defaults['max_attempts'] > next(counter) and not result:
 
         if socket in dict(poller.poll(timeout=_defaults['timeout'])):
             result = socket.recv_json(flags=zmq.NOBLOCK)
@@ -107,7 +107,7 @@ def status(environ, start_response):
     if not result:
         result = {"error" : 1}
 
-    return json.dumps(result)
+    return [json.dumps(result).encode('utf-8')]
 
 urls = [
     (r"status/(?P<id>[a-z0-9\-]+)?", status),
