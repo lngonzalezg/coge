@@ -65,3 +65,4 @@ XML::SAX::Expat
 XML::Simple
 ZMQ::LibZMQ3
 DBD::mysql
+Cache::FileCache
