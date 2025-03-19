@@ -159,7 +159,7 @@ sub add_jobs {
             my $filename = sanitize_name("$org.$program");
             my $outfile_link = catfile($download_path, $filename);
             $workflow->add_job({
-                cmd     => "ln -s $outfile \"$outfile_link\"",
+                cmd     => "ln -f -s $outfile \"$outfile_link\"",
                 inputs  => [$outfile],
                 outputs => [$outfile_link],
                 description => "Linking output to downloads"
