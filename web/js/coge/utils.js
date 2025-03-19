@@ -159,20 +159,8 @@ var coge = window.coge = (function(ns) {
     	},
     	
     	timeToLocal: function(time) {
-    		var localTime = moment.tz(time, COGE_TIME_ZONE);
-    		
-    		// Determine user's time zone
-    		if (!this.localTimeZone)
-    			this.localTimeZone = moment.tz.guess();
-    		
-    		// Do nothing if their time zone is same as CoGe's
-    		if (this.localTimeZone == COGE_TIME_ZONE)
-    			return time;
-    		
-    		// Convert time to user's time zone
-    	    var userTime = localTime.clone().tz(this.localTimeZone); // is clone necessary here?
-    	    return userTime.format("YYYY-MM-DD HH:MM:SS");
-    	},
+    		return time;
+    		},
 
     	ajaxWithTimestamp: function(request) {
     	    var self = this;
