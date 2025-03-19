@@ -12,7 +12,7 @@ start() {
     if [ "$port" == "" ]; then
         port=3303
     fi
-    morbo -l http://localhost:$port ./web/services/api.pl >> $HOME/api.log 
+    morbo -l http://localhost:$port ./web/services/api.pl
     echo "Started API (port $port)"
 }
 
