@@ -66,7 +66,7 @@ BEGIN {
     $TEMPDIR = catdir($BASEDIR, 'web', 'tmp'); #FIXME move out of web
     @ISA     = ( qw (Exporter Class::Accessor) );
     @EXPORT  = qw( get_session_id check_filename_taint check_taint gunzip gzip 
-                   send_email get_defaults set_defaults internal_url_for url_for api_url_for get_job 
+                   send_email get_defaults set_defaults internal_url_for url_for internal_api_url_for api_url_for get_job 
                    schedule_job render_template ftp_get_path ftp_get_file split_url
                    parse_proxy_response jwt_decode_token add_user write_log log_history
                    download_url_for get_command_path get_tiny_link
@@ -1196,14 +1196,24 @@ sub api_url_for {
     return catdir($API_URL, $path);
 }
 
+sub internal_api_url_for {
+    my $path = shift;
+    
+    my $API_URL = $CONF->{INT_API_URL};
+    croak "API_URL was not found in the config file" unless $API_URL;
+    
+    return $API_URL unless $path;
+    return catdir($API_URL, $path);
+}
 
-sub internal_url_for {
+
+sub url_for {
     my ($path, %params) = @_;
 
     # Error if CONFIG not set
     croak "CONFIG was not found." unless $CONF;
 
-    my $SERVER = 'http://localhost/';
+    my $SERVER = $CONF->{SERVER};
     my $BASE_URL = $CONF->{URL};
 
     # Error if SERVER not found
@@ -1248,14 +1258,14 @@ sub internal_url_for {
     return $scheme . join("/", @parts) . $query_string;;
 }
 
-sub url_for {
+sub internal_url_for {
     my ($path, %params) = @_;
 
     # Error if CONFIG not set
     croak "CONFIG was not found." unless $CONF;
 
-    my $SERVER = $CONF->{SERVER};
-    my $BASE_URL = $CONF->{URL};
+    my $SERVER = $CONF->{INT_SERVER};
+    my $BASE_URL = $CONF->{INT_URL};
 
     # Error if SERVER not found
     croak "SERVER option not found in CONFIG." unless $SERVER;

@@ -1647,7 +1647,7 @@ sub gen_tree_json {
 			};
 			shift @array;
 			if (scalar(@array) > 0) {
-				push ($hash->{children}, gen_subtree(\@array));
+				push (@{$hash->{children}}, gen_subtree(\@array));
 			}
 			return $hash;
 		}
@@ -1683,7 +1683,7 @@ sub gen_tree_json {
 			add_fix($sub_tree);
 			
 			#add the subtree as a child of the root
-			push ($root_children, $sub_tree);
+			push (@{$root_children}, $sub_tree);
 		} else {
 			#recurse to the next level of the tree
 			foreach my $child (@{$sub_tree->{children}}) {

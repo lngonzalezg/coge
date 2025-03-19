@@ -5,7 +5,7 @@ extends 'CoGe::Builder::Buildable';
 
 use CoGe::JEX::Jex;
 #use CoGe::JEX::Workflow;
-use CoGe::Accessory::Web qw(api_url_for url_for get_command_path);
+use CoGe::Accessory::Web qw(internal_api_url_for api_url_for url_for internal_url_for get_command_path);
 use CoGe::Accessory::Utils qw(units);
 use CoGe::Builder::CommonTasks qw(create_gff_generation_job);
 use CoGe::Accessory::TDS qw(write);
@@ -881,7 +881,7 @@ sub build1x1 {
             # mdb added 8/11/16 COGE-730 - write user-specific info to file
             my $config_file = catfile($result_path, 'dotplot_dots_' . get_tiny_link_key($tiny_link) . '.cfg');
             CoGe::Accessory::TDS::write($config_file, {
-                api_url     => url_for(api_url_for("genomes")),
+                api_url     => internal_url_for(internal_api_url_for("genomes")),
                 username    => ( $user ? $user->name : '""'),
                 secret_file => catfile($config->{RESOURCEDIR}, $config->{JWT_COGE_SECRET})
             });
@@ -1209,7 +1209,7 @@ sub build1x1 {
 				[ '--allgenes',     $all_genes,               0 ],
 				[ '--output',       $result_path,             0 ],
 				[ '--prefix',       $fb_prefix,               0 ],
-				[ '--apiurl',       url_for(api_url_for("genomes")), 0],
+				[ '--apiurl',       internal_url_for(api_url_for("genomes")), 0],
 				[ '--user',         ( $user ? $user->name : '""'), 0]
 			],
 			inputs => [

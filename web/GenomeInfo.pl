@@ -328,12 +328,12 @@ sub get_wobble_gc {
     my @dsids;
     push @dsids, map { $_->id } $genome->datasets();
 
-    my @fids = keys $raw;
-    my @data = map { $_->{percent_gc} } values $raw;
+    my @fids = keys %$raw;
+    my @data = map { $_->{percent_gc} } values %$raw;
 
     my ($gc, $at, $n) = (0, 0, 0);
 
-    for my $item (values $raw) {
+    for my $item (values %$raw) {
         $gc += $item->{gc} if $item->{gc};
         $at += $item->{at} if $item->{at};
         $n  += $item->{n}  if $item->{n};
@@ -576,12 +576,12 @@ sub get_gc_for_feature_type {
     push @dsids, map { $_->id } $genome->datasets();
 
     #storage for fids that passed.  To be sent to FeatList
-    my @fids = keys $raw;
-    my @data = map { $_->{percent_gc} } values $raw;
+    my @fids = keys %$raw;
+    my @data = map { $_->{percent_gc} } values %$raw;
 
     my ($gc, $at, $n) = (0) x 3;
 
-    for my $item (values $raw) {
+    for my $item (values %$raw) {
         $gc += $item->{gc} if $item->{gc};
         $at += $item->{at} if $item->{at};
         $n  += $item->{n}  if $item->{n};
