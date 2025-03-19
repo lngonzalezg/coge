@@ -1,13 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import web
 import os
-try:
-    import sqlite3
-except ImportError:
-    from pysqlite2 import dbapi2 as sqlite3
-import simplejson
-import urllib
+import sqlite3
+import json  # replaced simplejson with json
+import urllib.request  # updated for Python 3
 
 TMPDIR = "../tmp/GEvo/"
 if not os.path.exists(TMPDIR):
@@ -41,7 +38,7 @@ class info(object):
                 xmin=anchor['min'],
                 xmax=anchor['max']
             )
-        return simplejson.dumps(result)
+        return json.dumps(result)  # updated
 
 
 class follow(object):
@@ -52,7 +49,7 @@ class follow(object):
         c2 = db.cursor()
         img = web.input(img=None).img
 
-        bbox = map(float, web.input().bbox.split(","))
+        bbox = list(map(float, web.input().bbox.split(",")))  # wrap map with list
         ids = []
         pair_ids = []
 
@@ -124,7 +121,7 @@ class query(object):
         img = web.input(img=None).img
 
         if web.input(bbox=None).bbox:
-            bbox = map(float, web.input().bbox.split(","))
+            bbox = list(map(float, web.input().bbox.split(",")))  # wrap map with list
             c.execute("""SELECT * FROM image_data WHERE ? + 1 > xmin AND ? - 1 < xmax AND 
                       ? - 1 > ymin AND ? + 1 < ymax AND image_id = ? AND pair_id != -99 AND type = 'HSP'""", \
                       (bbox[2], bbox[0], bbox[3], bbox[1], img))
@@ -155,8 +152,9 @@ class query(object):
             pair = c2.fetchone()
             try:
                 anno = result['annotation']
+                anno = anno.replace("http://localhost:16500/","http://localhost/")
                 if anno.startswith('http'):
-                    anno = urllib.urlopen(anno).read()
+                    anno = urllib.request.urlopen(anno).read().decode('utf-8')  # updated call for Python 3
             except:
                 anno = ""
 
@@ -181,12 +179,12 @@ class query(object):
                     'key%i' % result['image_id']: f1pts,
                     'key%i' % (pair and pair['image_id'] or 999): f2pts}
             ))
-	if not results:
-	    results.append(dict(
-		annotation = "No results found"
-	    ))
-        web.header('Content-type', 'text/javascript')
-        return simplejson.dumps({'resultset':results})
+        if not results:
+            results.append(dict(
+                annotation = "No results found"
+            ))
+            web.header('Content-type', 'text/javascript')
+        return json.dumps({'resultset':results})  # updated
 
 
 urls = (
