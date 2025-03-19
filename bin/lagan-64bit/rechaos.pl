@@ -1,8 +1,8 @@
 #!/usr/bin/env perl
 
-$ENV{LAGAN_DIR}= '/opt/apache/coge/bin/lagan-64bit/';
+$ENV{LAGAN_DIR}= '/opt/apache2/coge/bin/lagan-64bit/';
 $lagandir = $ENV{LAGAN_DIR};
-$tempdir = '/opt/apache/coge/web/tmp';
+$tempdir = '/opt/apache2/coge/web/tmp';
 
 # Status
 #   -- extension problems
