@@ -74,7 +74,7 @@ sub hisat2_index {
         args => [],
         inputs => [ $fasta ],
         outputs => [
-            @{$self->index},
+            # @{$self->index}, # Indexed can be ht2l on newer hisat, disable checking for output files.
             $done_file
         ],
         description => "Indexing genome sequence with HISAT2"
