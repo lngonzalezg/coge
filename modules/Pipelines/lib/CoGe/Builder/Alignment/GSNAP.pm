@@ -100,7 +100,7 @@ sub gsnap_alignment {
         ["-n", $n, 0],
         ["-N", $N, 0],
         ["--format=sam", '', 0],
-        ["--gmap-mode=$gapmode", '', 1],
+        #["--gmap-mode=$gapmode", '', 1],
         ["--batch=5", '', 0]
     ];
 
