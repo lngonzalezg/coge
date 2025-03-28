@@ -47,7 +47,7 @@ sub build {
 
 sub trimmomatic {
     my $self = shift;
-    my $fastq = shift; # single fastq file or two paired-end fastq files
+    my $fastq = shift;
     $fastq = [ $fastq ] unless (ref($fastq) eq 'ARRAY');
 
     my $trimming_params = $self->params->{trimming_params} // {};
@@ -55,35 +55,64 @@ sub trimmomatic {
     my $encoding = $read_params->{encoding} // 33;
     my $read_type = $read_params->{read_type} // 'single';
 
-    my @outputs = map { catfile($self->staging_dir, basename(remove_fastq_ext($_) . '.trimmed.fastq' . to_compressed_ext($_))) } @$fastq; #map { catfile($self->staging_dir, to_filename($_) . '.trimmed.fastq') } @$fastq;
+    my $cmd = get_command_path('TRIMMOMATIC');
+    $cmd = 'nice java -jar ' . $cmd;
 
-    my $cmd = get_command_path('TRIMMOMATIC'); # path to jar file
-    $cmd = 'nice java -jar ' . $cmd; # run at lower priority
+    # Initialize args properly
+    my $args = [];
 
-    my $args;
-
-    if ($read_type eq 'paired') { # paired-end
-        # Example:  java -jar trimmomatic-0.36.jar PE SRR1564620_1.fastq SRR1564620_2.fastq -baseout trimmed.fastq MINLEN:36
+    if ($read_type eq 'paired') {
         push @$args, [ 'PE', '', 0 ];
+	}
+    else {
+        # Single-ended mode
+        push @$args, [ 'SE', '', 0 ];
+	}
+    # Add phred encoding first (correct order per documentation)
+    push @$args, [($encoding == 64 ? '-phred64' : '-phred33'), '', 0];
+    push @$args, [ '-threads', 8, 0 ];
+    push @$args, [ '-trimlog', 'trimmomatic.log', 0 ];
+
+    my @outputs;
+
+    if ($read_type eq 'paired') {
         push @$args, map { [ '', $_, 1 ] } @$fastq;
-        push @$args, [ '-baseout', to_filename($fastq->[0]), 0 ];
+        
+        # Create proper output files for paired-end mode
+        my $base = to_filename($fastq->[0]);
+        my $ext = '.fastq' . to_compressed_ext($fastq->[0]);
+        
+        my $paired_out1 = catfile($self->staging_dir, $base . '_1P' . $ext);
+        my $unpaired_out1 = catfile($self->staging_dir, $base . '_1U' . $ext);
+        my $paired_out2 = catfile($self->staging_dir, $base . '_2P' . $ext);
+        my $unpaired_out2 = catfile($self->staging_dir, $base . '_2U' . $ext);
+        
+        push @$args, [ '', $paired_out1, 1 ];
+        push @$args, [ '', $unpaired_out1, 1 ];
+        push @$args, [ '', $paired_out2, 1 ];
+        push @$args, [ '', $unpaired_out2, 1 ];
+        
+        # Update outputs to what Trimmomatic will actually produce
+        @outputs = ($paired_out1, $paired_out2, $unpaired_out1, $unpaired_out2);
     }
-    else { # single-ended
-        # Example:  java -jar trimmomatic-0.36.jar SE SRR1564620.fastq trimmed MINLEN:36
-        push @$args, [ 'SE', $fastq->[0], 1 ];
-        push @$args, [ '',   $outputs[0], 1 ];
+    else {
+        # Single-ended mode
+        my $output = catfile($self->staging_dir, 
+                             basename(remove_fastq_ext($fastq->[0]) . 
+                             '.trimmed.fastq' . to_compressed_ext($fastq->[0])));
+        
+        push @$args, [ '', $fastq->[0], 1 ];
+        push @$args, [ '', $output, 1 ];
+        
+        @outputs = ($output);
     }
 
-    foreach ( 'ILLUMINACLIP', 'SLIDINGWINDOW', 'MAXINFO', 'LEADING', 'TRAILING', 'CROP', 'HEADCROP', 'MINLEN' ) {
+    # Add all trimming steps
+    foreach ('ILLUMINACLIP', 'SLIDINGWINDOW', 'MAXINFO', 'LEADING', 
+            'TRAILING', 'CROP', 'HEADCROP', 'MINLEN', 'AVGQUAL') {
         my $value = $trimming_params->{$_};
         push @$args, ["$_:$value", '', 0] if ($value);
     }
-
-    push @$args, ( # these must go at end of command-line
-        [ '-threads', 8, 0 ],
-        [ '-trimlog', 'trimmomatic.log', 0 ],
-        [($encoding == 64 ? '-phred64' : '-phred33'), '', 0]
-    );
 
     return {
         cmd => $cmd,
@@ -93,5 +122,4 @@ sub trimmomatic {
         description => 'Trimming (Trimmomatic) ' . fastq_description($fastq, $read_type)
     };
 }
-
 1;

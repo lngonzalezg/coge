@@ -274,6 +274,11 @@
                     min="0" max="1" step="0.01" onchange="cs_display.value=value">
                 <output id="cs_display" for="csco"><tmpl_var name="cscore"></output>
             </li>
+	    <li>
+    		<label>Force regenerate analysis</label>
+    		<input type="checkbox" id="clean" name="clean" value="true">
+    		<span class="small note">Check this to completely regenerate the analysis, ignoring any cached results</span>
+	</li>
         </ul>
     </fieldset>
         <input type="hidden" name="fname" value="go">

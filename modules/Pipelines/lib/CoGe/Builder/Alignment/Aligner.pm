@@ -186,14 +186,15 @@ sub bowtie2_index { # shared between Bowtie and Tophat
     my $name = catfile($cache_dir, 'genome.reheader');
 
     my $cmd = get_command_path('BOWTIE_BUILD', 'bowtie2-build');
+    $cmd = $cmd . " --large-index  ";
 
     $self->index([
-        $name . ".1.bt2",
-        $name . ".2.bt2",
-        $name . ".3.bt2",
-        $name . ".4.bt2",
-        $name . ".rev.1.bt2",
-        $name . ".rev.2.bt2"
+        $name . ".1.bt2l",
+        $name . ".2.bt2l",
+        $name . ".3.bt2l",
+        $name . ".4.bt2l",
+        $name . ".rev.1.bt2l",
+        $name . ".rev.2.bt2l"
     ]);
 
     return {

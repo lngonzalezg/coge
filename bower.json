@@ -1,32 +1,34 @@
 {
-  "name": "coge",
-  "version": "0.0.0",
-  "homepage": "https://github.com/LyonsLab/coge",
-  "license": "MIT",
-  "ignore": [
-    "**/.*",
-    "node_modules",
-    "bower_components",
-    "web/js/vendor",
-    "test",
-    "tests"
-  ],
-  "dependencies": {
-    "jquery": "~3.1.1",
-    "jquery-ui": "~1.12.1",
-    "jstree": "~3.3.2",
-    "js-cookie": "~2.1.3",
-    "d3": "~3.5.6",
-    "d3-tip": "~0.6.3",
-    "lodash": "https://github.com/lodash/lodash.git",
-    "bootstrap": "~3.2.0",
-    "datatables": "~1.10.12",
-    "datatables.buttons": "https://github.com/DataTables/Buttons.git",
-    "plotly": "https://github.com/plotly/plotly.js.git",
-    "moment-timezone": "~0.5.5",
-    "moment-timezone-data": "http://momentjs.com/downloads/moment-timezone-with-data-2010-2020.js"
-  },
-  "resolutions": {
-    "d3": "^3.5.5"
+    "name": "coge",
+    "version": "0.0.0",
+    "homepage": "https://github.com/LyonsLab/coge",
+    "license": "MIT",
+    "ignore": [
+      "**/.*",
+      "node_modules",
+      "bower_components",
+      "web/js/vendor",
+      "test",
+      "tests"
+    ],
+    "dependencies": {
+      "jquery": "~3.1.1",
+      "jquery-ui": "~1.12.1",
+      "jstree": "~3.3.2",
+      "js-cookie": "~2.1.3",
+      "d3": "~3.5.6",
+      "d3-tip": "~0.6.3",
+      "lodash": "https://github.com/lodash/lodash.git",
+      "bootstrap": "~3.2.0",
+      "datatables": "~1.10.12",
+      "datatables.buttons": "https://github.com/DataTables/Buttons.git",
+      "plotly": "https://github.com/plotly/plotly.js.git",
+      "moment-timezone": "~0.5.5",
+      "moment-timezone-data": "https://momentjs.com/downloads/moment.js"    
+      
+    },
+    "resolutions": {
+      "d3": "^3.5.5"
+    }
   }
-}
+  

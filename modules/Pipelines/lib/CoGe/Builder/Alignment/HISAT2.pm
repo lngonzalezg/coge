@@ -56,17 +56,17 @@ sub hisat2_index {
 
     my $done_file = "$name.done";
 
-    my $cmd = 'nice ' . get_command_path('HISAT2_BUILD', 'hisat2-build') . " -p 32 $fasta $name && touch $done_file";
+    my $cmd = 'nice ' . get_command_path('HISAT2_BUILD', 'hisat2-build') . " --large-index  -p 32 $fasta $name && touch $done_file";
 
     $self->index([
-        $name . ".1.ht2",
-        $name . ".2.ht2",
-        $name . ".3.ht2",
-        $name . ".4.ht2",
-        $name . ".5.ht2",
-        $name . ".6.ht2",
-        $name . ".7.ht2",
-        $name . ".8.ht2",
+        $name . ".1.ht2l",
+        $name . ".2.ht2l",
+        $name . ".3.ht2l",
+        $name . ".4.ht2l",
+        $name . ".5.ht2l",
+        $name . ".6.ht2l",
+        $name . ".7.ht2l",
+        $name . ".8.ht2l",
     ]);
 
     return {
@@ -74,7 +74,7 @@ sub hisat2_index {
         args => [],
         inputs => [ $fasta ],
         outputs => [
-            # @{$self->index}, # Indexed can be ht2l on newer hisat, disable checking for output files.
+	    @{$self->index},
             $done_file
         ],
         description => "Indexing genome sequence with HISAT2"
@@ -124,7 +124,7 @@ sub hisat2_alignment {
         args => $args,
         inputs => [
             @$fastq,
-            @{$self->index}
+	    @{$self->index}
         ],
         outputs => [ catfile($self->staging_dir, $output_file) ],
         description => 'Aligning (HISAT2) ' . fastq_description($fastq, $read_type)

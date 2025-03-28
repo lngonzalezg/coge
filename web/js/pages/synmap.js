@@ -737,7 +737,8 @@ var coge = window.coge = (function(namespace) {
                 codeml_max: $('#codeml_max').val(),
                 logks: $('#logks')[0].checked,
                 csco: $('#csco').val(),
-                vis: $('#visualizer_select:checked').val()  //AKB Added 2016-10-18
+                vis: $('#visualizer_select:checked').val(),
+		clean: $('#clean')[0].checked ? true : null
             };
         },
 

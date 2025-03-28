@@ -268,7 +268,7 @@ sub get_genome_seq {
     #print STDERR "file_path=$file_path file_index_sz=$file_index_sz\n";
     if ($file_index_sz) {    # new indexed method
         # Extract requested piece of sequence file
-        my $region = "lcl|" . $chr . ( defined $start && defined $stop ? ":$start-$stop" : '' );
+	my $region = "lcl|".$chr . ( defined $start && defined $stop ? ":$start-$stop" : '' );
         my $samtools = CoGe::Accessory::Web::get_command_path('SAMTOOLS');
         my $cmd = "$samtools faidx $file_path '$region'";
 	#print STDERR $cmd,"\n";

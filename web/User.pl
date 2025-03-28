@@ -1817,7 +1817,7 @@ sub create_new_notebook {
         {
             name         => $name,
             description  => $desc,
-            #list_type_id => $type_id, # mdb removed 12/14/16 COGE-800
+	    #list_type_id => 5, # mdb removed 12/14/16 COGE-800
             creator_id   => $USER->id,
             restricted   => 1
         }
