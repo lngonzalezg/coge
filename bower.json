@@ -22,7 +22,7 @@
       "bootstrap": "~3.2.0",
       "datatables": "~1.10.12",
       "datatables.buttons": "https://github.com/DataTables/Buttons.git",
-      "plotly": "https://github.com/plotly/plotly.js.git",
+      "plotly.js": "1.12.0",
       "moment-timezone": "~0.5.5",
       "moment-timezone-data": "https://momentjs.com/downloads/moment.js"    
       
