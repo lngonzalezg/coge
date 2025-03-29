@@ -731,7 +731,7 @@ sub get_results {
     return encode_json ({
         html => $html,
         click_all_links => $click_all_links,
-        success => JSON::true
+        success => 1
     });
 }
 
