@@ -167,7 +167,7 @@ my %seen_attr;
 # Load GFF file into %data
 #TODO copy gff file into staging directory to read from instead of upload directory
 unless ( process_gff_file() ) {
-    print $log "log: error: no annotations found, perhaps your file is missing required information, please check the <a href='http://genomevolution.org/wiki/index.php/GFF_ingestion'>documentation</a>\n";
+    print $log "log: error: no annotations found, perhaps your file is missing required information, please check the <a href='https://genomevolution.org/wiki/index.php?title=GFF_ingestion'>documentation</a>\n";
     exit(-1);
 }
 

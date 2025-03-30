@@ -8,4 +8,4 @@ Installation
 ------------
 
 For detailed installation instructions please visit:
-*http://genomevolution.org/wiki/index.php/Install_coge*
+*https://genomevolution.org/wiki/index.php?title=Install_coge*

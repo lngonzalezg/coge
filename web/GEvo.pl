@@ -1256,7 +1256,7 @@ sub run {
     }
     $html .= '<svg id="svg" style="position:absolute;top:0;left:0;width:100%;height:100%;" onclick="svg_click(event)" onmousedown="svg_mousedown(event)" onmousemove="svg_mousemove(event)" onmouseleave="svg_mouseleave(event)"></svg></div><script>var basename=\'' . basename($cogeweb->basefile) . '\';var num_img=' . (scalar @sets) . ';setup_images();images_loaded();</script>';
     $html .=
-qq{<a href="http://genomevolution.org/wiki/index.php/Gobe" class="small" style="color: red" target=_new>Click here for help!</a>  <a href="http://get.adobe.com/flashplayer/" class="small" target=_new >No results?  Rerun by pressing "Run GEvo Analysis!" again.</a>.};
+qq{<a href="https://genomevolution.org/wiki/index.php?title=Gobe" class="small" style="color: red" target=_new>Click here for help!</a>  <a href="http://get.adobe.com/flashplayer/" class="small" target=_new >No results?  Rerun by pressing "Run GEvo Analysis!" again.</a>.};
     $html .= $gobe_buttons;
     $html .= qq{<table class=small>};
     $html .= qq{<tr valign=top><td><span class=bold>Alignment reports</span>};
@@ -4630,7 +4630,7 @@ Thank you for using the Genome Evolution Analysis Tool! The results from your la
 } . $server . qq{/GEvo_direct.pl?name=$basefilename
 
 To contact us or to cite CoGe please visit:
-http://genomevolution.org/wiki/index.php/Contact_Page
+https://genomevolution.org/wiki/index.php?title=Contact_Page
 
 You can use this URL for regenerating your results:
 $full_gevo_url

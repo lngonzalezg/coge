@@ -180,7 +180,7 @@ print STDOUT "All done!\n";
 exit;
 
 #-------------------------------------------------------------------------------
-# Format defined here:  http://genomevolution.org/wiki/index.php/Experiment_Metadata
+# Format defined here:  https://genomevolution.org/wiki/index.php?title=Experiment_Metadata
 sub get_metadata {
     my $file = shift;
     my $metadata = shift;
