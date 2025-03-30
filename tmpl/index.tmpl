@@ -181,7 +181,7 @@ function cross_fade(selector, image, delay) {
                 viewer.on("click", $.proxy(pause, run_button))
                     .on("click", function() { elem.replaceWith($(image[index][3]).css("width", "95%").css("height", "500px")); });
             } else {
-                viewer.on("click", function() { window.open("https://genomevolution.org/wiki/index.php/"+image[index][2]); });
+                viewer.on("click", function() { window.open("https://genomevolution.org/wiki/index.php?title="+image[index][2]); });
             }
 
             viewer.html("")
@@ -414,19 +414,19 @@ Maintenance complete.  Please email the CoGe team if you experience any problems
             <br>
             <ul class="horizontal">
                 <li>
-                    <a href="https://genomevolution.org/wiki/index.php/New_to_CoGe">Get started</a>
+                    <a href="https://genomevolution.org/wiki/index.php?title=New_to_CoGe">Get started</a>
                 </li>
                 <li>
-                    <a href="https://genomevolution.org/wiki/index.php/How_to_get_a_CoGe_account">Create an Account</a>
+                    <a href="https://genomevolution.org/wiki/index.php?title=How_to_get_a_CoGe_account">Create an Account</a>
                 </li>
                 <li>
-                    <a href="https://genomevolution.org/wiki/index.php/Tutorials">Tutorials</a>
+                    <a href="https://genomevolution.org/wiki/index.php?title=Tutorials">Tutorials</a>
                 </li>
                 <li>
                     <a href="https://genomevolution.org/wiki">Documentation</a>
                 </li>
                 <li>
-                    <a href="https://genomevolution.org/wiki/index.php/FAQs">FAQ</a>
+                    <a href="https://genomevolution.org/wiki/index.php?title=FAQs">FAQ</a>
                 </li>
             </ul>
         </div>
@@ -517,7 +517,7 @@ Maintenance complete.  Please email the CoGe team if you experience any problems
                 body.append(document.createTextNode(' - '));
         }
         if (tool.docs)
-            $('<a href="https://genomevolution.org/wiki/index.php/' + tool.docs + '" target="_blank">Documentation</a>').appendTo(body);
+            $('<a href="https://genomevolution.org/wiki/index.php?title=' + tool.docs + '" target="_blank">Documentation</a>').appendTo(body);
     });
 </script>
         <div class="coge-section-lg">
