@@ -1,5 +1,8 @@
 package CoGe::Builder::Tools::SynMap;
 
+use warnings;
+use strict;
+
 use Moose;
 extends 'CoGe::Builder::Buildable';
 
