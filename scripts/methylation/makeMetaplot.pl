@@ -3,7 +3,7 @@
 die "DIE $prog: Statistics::Descriptive module is missing! (try: perl -MCPAN -e 'install Statistics::Descriptive')" unless(eval{require Statistics::Descriptive});
 die "DIE $prog: Statistics::R module is missing! (try: perl -MCPAN -e 'install Statistics::R')" unless(eval{require Statistics::R});
 die "DIE $prog: Parallel::ForkManager module is missing!" unless(eval{require Parallel::ForkManager});
-die "DIE $prog: Bio::DB::Sam module is missing!" unless(eval{require Bio::DB::Sam});
+die "DIE $prog: Bio::DB::HTS module is missing!" unless(eval{require Bio::DB::HTS});
 
 use strict;
 use warnings;
@@ -15,7 +15,7 @@ use Hash::Merge;
 use Hash::Merge::Simple;
 use Storable;
 use Cwd;
-use Bio::DB::Sam;
+use Bio::DB::HTS;
 use Statistics::Descriptive;
 use Statistics::R;
 
@@ -165,7 +165,7 @@ sub getCoverageFromBam {
 	my $self = shift;
 	my $count = 0;
 	
-	my $sam = Bio::DB::Sam->new(-bam => $self->{_currentFile});
+	my $sam = Bio::DB::HTS->new(-bam => $self->{_currentFile});
 	foreach my $chr (sort keys %{$self->{features}} ){
 		foreach my $featureId (sort {$self->{features}->{$chr}->{$a}->{start} <=> $self->{features}->{$chr}->{$b}->{start} } keys %{$self->{features}->{$chr}} ) {
 			print STDERR "\r$featureId ", sprintf("%.1f", 100*(++$count / $self->{totalFeatures})), '%                     ' unless $QUIET;
@@ -284,7 +284,7 @@ sub getCoverageFromBam2 {
         print STDERR "Starting $chr\n" unless $QUIET;
         $pm->start($chr) and next; # fork
         
-        my $sam = Bio::DB::Sam->new(-bam => $self->{_currentFile});
+        my $sam = Bio::DB::HTS->new(-bam => $self->{_currentFile});
         
         foreach my $featureId (sort {$self->{features}->{$chr}->{$a}->{start} <=> $self->{features}->{$chr}->{$b}->{start} } keys %{$self->{features}->{$chr}} ) {
             #print STDERR "\r$chr $featureId" unless $QUIET;
@@ -419,7 +419,7 @@ sub print {
 
 	my @header; 
 	push(@header, "5or3", "pos", "start", "stop");
-	my @fileName = sort keys $self->{print}->{st}->{'1'};
+	my @fileName = sort keys %{ $self->{print}->{st}->{'1'} };
 	foreach(@fileName){
 		push(@header,$_);
 		push(@header,$_);	

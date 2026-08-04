@@ -18,15 +18,15 @@ my $src_dbh = DBI->connect("dbi:SQLite:dbname=$src_file","","");
 my $dest_dbh = DBI->connect("dbi:SQLite:dbname=$dest_file","","");
 
 my $src_workflows = load_workflows($src_dbh);
-print STDERR "Source workflows: ", scalar(keys $src_workflows), "\n";
+print STDERR "Source workflows: ", scalar(keys %$src_workflows), "\n";
 #print STDERR Dumper $src_workflows, "\n";
 
 my $dest_workflows = load_workflows($dest_dbh);
-print STDERR "Destination workflows: ", scalar(keys $dest_workflows), "\n";
+print STDERR "Destination workflows: ", scalar(keys %$dest_workflows), "\n";
 #print STDERR Dumper $dest_workflows, "\n";
 
 my $added = 0;
-foreach my $wid (keys $src_workflows) {
+foreach my $wid (keys %$src_workflows) {
     next if ($dest_workflows->{$wid}); # workflow already exists in both
     add_workflow($dest_dbh, $src_workflows->{$wid});
     $added++;

@@ -4,14 +4,10 @@
 # Author:	Matt Bomhoff
 # Created:	9/21/15
 #-------------------------------------------------------------------------------
-# Installing Tabix:
-#    git clone git@github.com:samtools/tabix.git
-#    cd tabix
-#    make
-#    sudo cp bgzip tabix /usr/local/bin
-#    cd perl
-#    perl Makefile.PL lib=/usr/local/lib/perl/5.18.2/
-#    sudo make install
+# Requires Bio::DB::HTS (provides Bio::DB::HTS::Tabix):
+#    apt-get install libhts-dev
+#    cpanm Bio::DB::HTS
+# Replaces the obsolete samtools "Tabix" perl bindings.
 #-------------------------------------------------------------------------------
 
 use warnings;
@@ -23,8 +19,7 @@ use File::Spec::Functions qw(catdir catfile);
 use File::Touch;
 use CoGe::Algos::PopGen::Diversity;
 use CoGe::Algos::PopGen::FileFormats;
-use lib '/opt/apache2/coge/bin/Tabix'; # mdb added 5/4/16 to get Tabix.pm working on PROD
-use Tabix;
+use Bio::DB::HTS::Tabix;
 
 my ($VCF_FILE, $GFF_FILE, $FASTA_FILE, $CHR, $GENE_NAME, $FEAT_TYPE, 
     $OUTPUT_PATH, $DEBUG, $DEBUGFH);
@@ -71,7 +66,7 @@ my $pSeq = loadFASTA($FASTA_FILE);
 
 # Open Tabix indexed VCF
 print STDERR "Loading VCF\n";
-my $tabix = Tabix->new(-data => $VCF_FILE);
+my $tabix = Bio::DB::HTS::Tabix->new( filename => $VCF_FILE );
 
 # Create results file
 my $resultsfile = catfile($OUTPUT_PATH, 'sumstats.tsv');
@@ -121,13 +116,18 @@ foreach my $type (sort keys %$pAnnot) {
                     $codingSeq .= $featSeq;
                 }
                 
-                # Retrieve range of entries from indexed VCF file
-                my $iter = $tabix->query($chr, $start, $end);
-                #print STDERR 'query: ', join(' ', $chr, $start, $end), "\n";
-                next unless (defined $iter && $iter->get);
-                
+                # Retrieve range of entries from indexed VCF file.
+                # NOTE: the old samtools Tabix->query($chr,$start,$end) took
+                # 0-based half-open coordinates, so it returned VCF POS in
+                # [$start+1, $end] -- i.e. it skipped the feature's first base.
+                # Bio::DB::HTS::Tabix region strings are 1-based inclusive, so
+                # the +1 below reproduces the previous result set exactly.
+                # Drop the +1 to include the first base (see PERL_MODERNIZATION.md §9).
+                my $iter = $tabix->query( $chr . ':' . ($start + 1) . '-' . $end );
+                next unless defined $iter;
+
                 # Count and classify sites
-                while (my $data = $tabix->read($iter)) {
+                while (my $data = $iter->next) {
                     my $r = parseVCF($data);
                     my $pos = $r->{pos};
                     

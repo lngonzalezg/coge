@@ -5,7 +5,7 @@ use CGI;
 use DBI;
 use Data::Dumper;
 use POSIX;
-use JSON::Syck;
+use JSON::XS qw(encode_json);
 use LWP::Simple;
 
 my $q = new CGI;
@@ -113,7 +113,7 @@ if ($q->param('get_info')){
 #    print STDERR Dumper %result;
     my ($coordslist, $rand)  = &get_cns();
     $result{'CNS'} = $coordslist;
-    print JSON::Syck::Dump(\%result);
+    print encode_json(\%result);
     undef $coordslist ;
     exit();
 }
@@ -225,4 +225,4 @@ while( my $result = $sth->fetchrow_hashref() ){
                  });
     #print STDERR Dumper @results;
 }
-print JSON::Syck::Dump({resultset => \@results});
+print encode_json({resultset => \@results});

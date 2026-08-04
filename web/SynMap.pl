@@ -6,7 +6,7 @@ umask(0); # what is this for? (mdb 10/19/16)
 
 use CoGeX;
 use CoGeX::Result::Genome qw(ERROR LOADING);
-use CoGe::Accessory::Web qw(internal_url_for internal_api_url_for url_for api_url_for get_command_path);
+use CoGe::Accessory::Web qw(url_for api_url_for get_command_path);
 use CoGe::Accessory::Utils qw( commify html_escape );
 use CoGe::Builder::Tools::SynMap;
 use CoGe::Core::Genome qw(genomecmp genomecmp2);
@@ -2028,7 +2028,7 @@ sub get_dotplot {
 	$params{fid1}   = $fid1         if defined $fid1 && $fid1 =~ /^\d+$/;
 	$params{fid2}   = $fid2         if defined $fid2 && $fid2 =~ /^\d+$/;
 
-	$url = internal_url_for( "run_dotplot.pl", %params ) . "&" . $url;
+	$url = url_for( "run_dotplot.pl", %params ) . "&" . $url;
 	my $ua = LWP::UserAgent->new;
 	$ua->timeout(10);
 	my $response = $ua->get($url);
