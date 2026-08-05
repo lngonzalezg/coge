@@ -55,13 +55,28 @@ app->hook( # mdb added 1/9/17
         my $template = $args->{template} || '';
 
         if ($template =~ /^exception/) {
-            my $ex = $args->{exception};
-#            warn 'Exception: ', ref($ex);
-            my $trace = ($ex->message && $ex->message->can('stack_trace') ? $ex->message->stack_trace->as_string : '');
+            # Mojolicious >= 7 puts the exception in the stash, not in the render
+            # arguments. This hook was written in 2017 against the older API, where
+            # $args->{exception} was populated. The template-name test above was
+            # unaffected by that change, so the hook kept firing while its data source
+            # silently disappeared: $ex was undef, ->message died inside the renderer,
+            # and the worker dropped the connection mid-response. The proxy in front
+            # then turned every JSON API exception into an opaque 502.
+            my $ex = $args->{exception} // $c->stash('exception');
+
+            # For CoGe::Exception::* (Throwable::Error subclasses) ->message is the
+            # original thrown object, which carries a stack trace. For anything else
+            # it is a plain string -- only call ->can on a reference, otherwise Perl
+            # treats the string as a class name.
+            my $msg = eval { $ex->message };
+            $msg = 'Unknown' unless defined $msg;
+
+            my $trace = (ref($msg) && $msg->can('stack_trace')) ? $msg->stack_trace->as_string : '';
             warn $trace if $trace;
+
             $args->{json} = {
                 error => {
-                    message => $ex->message || 'Unknown',
+                    message => "$msg",
                     trace   => $trace
                 }
             };
