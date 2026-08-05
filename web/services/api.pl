@@ -48,6 +48,13 @@ my $r = app->routes->namespaces(["CoGe::Services::API::JBrowse", "CoGe::Services
 # this hook as a workaround.  Without this the default html error template is rendered
 # when throw() is called.
 # See https://groups.google.com/d/msg/mojolicious/UbY9Ac9unfY/VXF9ZWGFRBAJ
+#
+# NOTE: this hook is coupled to Mojolicious internals. It keys off the render template
+# name ("exception.$mode", set by Mojolicious::Plugin::DefaultHelpers::_development) and
+# reads the exception object the framework stores in the stash. Both are private details
+# that have changed before -- the args-vs-stash move between Mojolicious 6 and 7 silently
+# broke this hook for years. Re-check it after any Mojolicious major upgrade.
+# Verified against Mojolicious 9.48.
 app->hook( # mdb added 1/9/17
     before_render => sub {
         return unless $_[0]->accepts('json');
