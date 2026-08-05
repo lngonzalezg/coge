@@ -900,25 +900,51 @@ All verified inside `coge_main` (Perl 5.34.0) against the real installed
 dependencies. Sweep result after these changes: **334 files checked, 5 failing**,
 all five known non-issues (see §9.5).
 
-### 9.1 Removed `internal_api_url_for` and `internal_url_for`
+### 9.1 `internal_api_url_for` / `internal_url_for` — removed, then RESTORED
 
-Both read `INT_*` config keys that **do not exist in `coge.conf`**
-(`INT_API_URL`, `INT_SERVER`, `INT_URL`), so both would `croak` if called.
-`internal_api_url_for` had no remaining callers; `internal_url_for` had three,
-all on the SynMap dotplot path — a runtime failure no compile check would catch.
-Both are gone, `url_for` replaces the calls.
+**Final state: both functions exist and are exported; the three call sites use
+`internal_url_for(api_url_for(...))`.** They were briefly removed in `0bdff0a07`
+on the reasoning that the `INT_*` config keys did not exist, so the functions
+could only `croak`. That reasoning was right about the config and wrong about the
+fix: the keys were missing, but the functions are needed. Restored in the
+following commit, with the config keys added.
 
-| File | Change |
-|---|---|
-| `Accessory/Web.pm` | dropped both `sub`s and both `@EXPORT` entries |
-| `Builder/Tools/SynMap.pm` | import list; `:887` and `:1215` → `url_for(api_url_for("genomes"))` |
-| `web/SynMap.pl` | import list; `:2031` → `url_for("run_dotplot.pl", %params)` |
+Why they are needed — measured inside `coge_main`:
 
-`url_for` takes the same `($path, %params)` signature, so the calls are
-otherwise unchanged. Effect: these URLs now use `SERVER`/`URL` (the public
-hostname) instead of the never-configured internal address. **The dotplot
-subprocess and JEX workers must be able to resolve and reach `SERVER` from
-inside the container** — worth a functional check on a dotplot after deploy.
+| Builder | Value | Reachable from inside the container? |
+|---|---|---|
+| `url_for(api_url_for("genomes"))` | `http://localhost:60500/coge/api/v1/genomes` | **No — HTTP 000** |
+| `internal_url_for(api_url_for("genomes"))` | `http://localhost/coge/api/v1/genomes` | **Yes — HTTP 200, 0 redirects** |
+
+`SERVER` is `http://localhost:60500/coge/`, and 60500 is the *host-published*
+port; Apache inside the container listens on **80**. So any server-side
+subprocess that calls back through `SERVER` leaves the container, hits the
+published port, and gets bounced through Apache — or, as measured, fails
+outright. Three consumers depend on the internal address:
+
+| Call site | Consumer | Notes |
+|---|---|---|
+| `SynMap.pm:887` | `scripts/synmap/dotplot_dots.py` | inside `if ($ks_type)` — **only exercised with Ks enabled**; reads `api_url` from the `.cfg` written here and calls it with `requests.get` + a JWT |
+| `SynMap.pm:1215` | `scripts/synmap/fractionation_bias.py` | `--apiurl` argument |
+| `web/SynMap.pl:2031` | `web/run_dotplot.pl` | server-side fetch via `LWP::UserAgent` |
+
+Config keys added to `coge.conf` (gitignored — **must be baked into the image
+build**, see §9.6):
+
+```
+INT_SERVER http://localhost/coge/
+INT_URL /coge/
+INT_API_URL /api/v1/
+```
+
+A backup of the previous file is at `coge.conf.bak-preINT` in the container.
+
+Note `internal_api_url_for` currently has **no callers** — `INT_API_URL` is
+composed by `internal_url_for(api_url_for(...))` instead, which yields the same
+result because `INT_API_URL` and `API_URL` are both `/api/v1/`. The function is
+restored and exported so it is available, and so that removing it again is not
+mistaken for a safe cleanup. If the internal API ever moves to a different path,
+`internal_api_url_for` is the hook to use.
 
 ### 9.2 Fatal-error fixes (§1.2, §1.3)
 
@@ -995,4 +1021,6 @@ set that can alter numeric results.
 - The behavioural work in §4 (hash ordering, Storable caches, encoding).
 - `resources/CoGe_secret.txt`, `resources/DE_rsa.pub`, and `coge.conf` are
   untracked/gitignored but required at runtime — they must be injected at image
-  build or mounted, or JWT auth breaks (§8 note).
+  build or mounted, or JWT auth breaks (§8 note). **`coge.conf` must now also
+  carry `INT_SERVER` / `INT_URL` / `INT_API_URL` (§9.1)** or SynMap's Ks/dotplot
+  and FractBias tasks will `croak`.
