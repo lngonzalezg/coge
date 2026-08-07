@@ -1067,6 +1067,7 @@ sub go_synfind {
         my $blastfile = $basedir . "/" . $basename . ".$algo";
         my $bedfile1  = $BEDDIR . $dsgid1 . ".bed";
         my $bedfile2  = $BEDDIR . $dsgid2 . ".bed";
+        for ($window_size, $cutoff, $scoring_function, $algo) { next unless defined; s{[^\w.\-]}{}g; } # §6.3 no traversal via SQLite-DSN path components
         $target->{synteny_score_db}    = $basedir . "/" . $basename . "_" . $window_size . "_" . $cutoff . "_" . $scoring_function . ".$algo" . ".v053" . ".db"; #v053 is the version of synteny_score
         $target->{basedir}             = $basedir;
         $target->{basename}            = $basename;
@@ -1388,6 +1389,7 @@ sub get_results {
         my $blastfile = $basedir . "/" . $basename . ".$algo";
         my $bedfile1  = $BEDDIR . $dsgid1 . ".bed";
         my $bedfile2  = $BEDDIR . $dsgid2 . ".bed";
+        for ($window_size, $cutoff, $scoring_function, $algo) { next unless defined; s{[^\w.\-]}{}g; } # §6.3 no traversal via SQLite-DSN path components
         $target->{synteny_score_db}    = $basedir . "/" . $basename . "_" . $window_size . "_" . $cutoff . "_" . $scoring_function . ".$algo" . ".v053" . ".db"; #v053 is the version of synteny_score
         #$target->{synteny_score_db}    = $basedir . "/" . $basename . "_" . $window_size . "_" . $cutoff . "_" . $scoring_function . ".$algo" . ".db";
 
@@ -2074,6 +2076,7 @@ sub get_master_syn_sets {
           if ( $dsgid2 lt $dsgid1 );
         my $basedir  = $DIAGSDIR . "/" . $dsgid1 . "/" . $dsgid2;
         my $basename = $dsgid1 . "_" . $dsgid2 . "." . "CDS-CDS";
+        for ($window_size, $cutoff, $scoring_function, $algo) { next unless defined; s{[^\w.\-]}{}g; } # §6.3 no traversal via SQLite-DSN path components
         my $db =
             $basedir . "/"
           . $basename . "_"
@@ -2282,6 +2285,7 @@ sub get_unique_genes {
         if ( $dsgid2 lt $dsgid1 );
     my $basedir  = $DIAGSDIR . "/" . $dsgid1 . "/" . $dsgid2;
     my $basename = $dsgid1 . "_" . $dsgid2 . "." . "CDS-CDS";
+    for ($window_size, $cutoff, $scoring_function, $algo) { next unless defined; s{[^\w.\-]}{}g; } # §6.3 no traversal via SQLite-DSN path components
     my $db = $basedir . "/" . $basename . "_" . $window_size . "_" . $cutoff . "_" . $scoring_function . ".$algo" . ".v053" . ".db";
     my $dbh   = DBI->connect( "dbi:SQLite:dbname=$db", "", "" );
     my $query = "SELECT * FROM synteny";

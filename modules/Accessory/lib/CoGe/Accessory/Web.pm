@@ -1069,21 +1069,32 @@ sub read_log {
     my %args    = @_;
     my $logfile = $args{logfile};
     my $prog    = $args{prog};
-    my $tempdir = $args{tempdir};
-    $tempdir = $TEMPDIR unless $tempdir;
-    return unless $logfile;
-    $logfile .= ".log" unless $logfile =~ /log$/;
-    unless ( $logfile =~ /^$tempdir/ ) {
-        $logfile = "$prog/" . $logfile if $prog;
-        $logfile = "$tempdir/" . $logfile;
+
+    # §6.1 The attacker-supplied `tempdir` is ignored entirely: it previously
+    # let an unauthenticated caller read any *.log on the host (e.g. Apache
+    # access.log -> harvest username/token query params) and was interpolated
+    # raw into /^$tempdir/ (ReDoS). Constrain the target to a relative path
+    # resolved strictly inside $TEMPDIR (optionally one `prog` sub-dir).
+    return unless defined $logfile && length $logfile;
+    my $rel = CoGe::Accessory::Validate::valid_relpath($logfile);
+    return unless defined $rel;
+    $rel =~ s{^tmp/}{};                    # $TEMPDIR already ends in .../tmp
+    $rel .= ".log" unless $rel =~ /\.log$/;
+
+    my @prog;
+    if ( defined $prog && length $prog ) {
+        my $p = CoGe::Accessory::Validate::valid_filename($prog);
+        return unless defined $p;
+        @prog = ($p);
     }
-    return unless -r $logfile;
-    my $str;
-    open( IN, $logfile );
-    while (<IN>) {
-        $str .= $_;
-    }
-    close IN;
+
+    my $path = CoGe::Accessory::Validate::contained_path( $TEMPDIR, @prog, $rel );
+    return unless defined $path && -r $path;
+
+    open( my $in, '<', $path ) or return;
+    local $/;
+    my $str = <$in>;
+    close $in;
     return $str;
 }
 

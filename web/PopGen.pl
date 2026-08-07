@@ -1,6 +1,7 @@
 #! /usr/bin/perl -w
 use strict;
 use CoGe::Accessory::Web;
+use CoGe::Accessory::Validate qw(valid_id);
 use CGI;
 use Data::Dumper;
 use File::Spec::Functions qw( catfile );
@@ -17,11 +18,30 @@ $| = 1;    # turn off buffering
 
 $FORM = new CGI;
 
+# §6.3 Resolve db/user BEFORE the export branch. Previously the export ran with
+# no user context, so any experiment's sumstats.tsv was downloadable anonymously
+# (eid was also an unvalidated path segment -> traversal, and type/chr were
+# reflected into a response header -> CRLF injection).
+( $DB, $USER, $CONF, $LINK ) = CoGe::Accessory::Web->init(
+    cgi => $FORM,
+    page_title => $PAGE_TITLE
+);
+
 my $export = $FORM->Vars->{'export'};
 if ($export) {
-	my $file = catfile($ENV{COGE_HOME}, 'data', 'popgen', $FORM->Vars->{'eid'}, 'sumstats.tsv');
+	my $eid = valid_id( $FORM->Vars->{'eid'} );
+	my $experiment = $eid ? $DB->resultset('Experiment')->find($eid) : undef;
+	unless ( $experiment
+		&& ( !$experiment->restricted
+			|| ( $USER && !$USER->is_public && $USER->has_access_to_experiment($experiment) ) ) )
+	{
+		print "Content-Type: text/plain\n\nAccess denied\n";
+		return;
+	}
+	my $file = catfile($ENV{COGE_HOME}, 'data', 'popgen', $eid, 'sumstats.tsv');
 	my $type = $FORM->Vars->{'type'};
 	my $chr = $FORM->Vars->{'chr'};
+	s/[\r\n]//g for ($type, $chr); # strip CRLF -> no response-header injection
 	my @columns = map {substr $_, 3} split ',', $export;
 
 	print "Content-Disposition: attachment; filename=PopGen_" . $type . "_" . $chr . ".tsv\n\n";
@@ -55,11 +75,6 @@ if ($export) {
 	}
 	return;
 }
-
-( $DB, $USER, $CONF, $LINK ) = CoGe::Accessory::Web->init(
-    cgi => $FORM,
-    page_title => $PAGE_TITLE
-);
 
 print $FORM->header, gen_html();
 

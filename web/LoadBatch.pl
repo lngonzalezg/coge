@@ -8,6 +8,7 @@ use CoGeX;
 use CoGe::Accessory::Web;
 use CoGe::Accessory::Utils;
 use CoGe::Core::Storage qw(get_workflow_paths get_upload_path);
+use CoGe::Accessory::Validate qw(valid_filename);
 use CoGe::Core::Genome qw(genomecmp);
 use HTML::Template;
 use JSON::XS;
@@ -144,9 +145,14 @@ sub upload_file {
 
     #   print STDERR "upload_file: $filename\n";
 
+    # §6.2 The client-supplied filename is used as a write target below; reduce
+    # it to a single safe path component so it cannot traverse out of the upload
+    # dir (e.g. "../../.../web/x.pl" -> webshell).
+    $filename = valid_filename($filename);
+
     my $size = 0;
     my $path;
-    if ($fh) {
+    if ($fh && defined $filename) {
         my $tmpfilename = $FORM->tmpFileName( $FORM->param('input_upload_file') );
         $path = catfile('upload', $filename);
         my $targetpath = catdir($TEMPDIR, 'upload');

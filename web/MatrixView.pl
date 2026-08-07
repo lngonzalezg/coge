@@ -10,6 +10,7 @@ use CGI::Ajax;
 #use CoGeX;
 use Benchmark;
 use CoGe::Accessory::Web;
+use CoGe::Accessory::Validate qw(valid_filename contained_path);
 use CoGe::Accessory::genetic_code;
 use Statistics::Basic::Mean;
 use Digest::MD5 qw(md5_base64);
@@ -228,13 +229,19 @@ sub process_file {
     $bin_size = 100 if $bin_size > 100;
     my $skip = $opts{skip} || [];    #[qw(mitochond chloroplast virus phage)];
     my $keep = $opts{keep} || [];    #[qw(mitochondr)];
-    my $file = $opts{file};
-    $file = $MATRIXDIR . "/" . $file unless $file =~ /$MATRIXDIR/i;
+    # §6.3 `file` is a substitution-matrix name chosen by the caller and was
+    # concatenated onto $MATRIXDIR with only a substring check, so
+    # `file=../../../../coge.conf` escaped the directory and leaked the config
+    # (DBPASS/JWT). Constrain it to a single filename resolved inside $MATRIXDIR.
+    my $name = valid_filename( $opts{file} );
+    return unless defined $name;
+    my $file = contained_path( $MATRIXDIR, $name );
+    return unless defined $file && -r $file;
     my %data;
     my @head;
     my $max = 0;
     my $min = 10000;
-    open( IN, "<", $file );
+    open( IN, "<", $file ) or return;
 
     while (<IN>) {
         chomp;

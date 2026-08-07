@@ -5,6 +5,7 @@ use CGI::Carp 'fatalsToBrowser';
 use CGI::Ajax;
 use CoGeX;
 use CoGe::Accessory::Web;
+use CoGe::Accessory::Validate qw(valid_filename);
 use HTML::Template;
 use Data::Dumper;
 use Digest::MD5 qw(md5_base64);
@@ -287,17 +288,24 @@ sub get_info_from_db {
     my $db          = $opts{db_file};
     my $hsp_num     = $opts{hsp_num};
     my $report_file = $opts{report_file};
+    # §6.3 db_file is interpolated into the SQLite DSN path; constrain it to a
+    # single filename so it cannot traverse out of $TEMPDIR/GEvo/. hsp_num is
+    # bound rather than interpolated (§5.3); set1/set2 are regex-extracted digits.
+    $db = valid_filename($db);
+    return unless defined $db;
     my ($base) = $db =~ /^(.*?)\./;
     my ( $set1, $set2 ) = $report_file =~ /_(\d+)-(\d+)/;
+    $set1 = 0 unless defined $set1;
+    $set2 = 0 unless defined $set2;
     my $output;
     my $dbh = DBI->connect( "dbi:SQLite:dbname=$TEMPDIR/GEvo/$db", "", "" );
     my $statement =
-qq{SELECT annotation, pair_id, id, image_id from image_data where name like "$hsp_num-%" and (image_id = $set1 or image_id = $set2)};
+qq{SELECT annotation, pair_id, id, image_id from image_data where name like ? and (image_id = $set1 or image_id = $set2)};
     my $sth = $dbh->prepare($statement);
     my $statement2 =
 qq{SELECT dsid, chromosome, bpmin, bpmax, reverse_complement from image_info where id = ?};
     my $sth2 = $dbh->prepare($statement2);
-    $sth->execute();
+    $sth->execute("$hsp_num-%");
     my %hsps;
     my %ids;
 
