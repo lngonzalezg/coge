@@ -11,6 +11,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <TMPL_INCLUDE NAME="header_includes.tmpl">
+<script type="text/javascript" src="js/coge/build-info.js"></script>
 
 <TMPL_VAR NAME="HEAD">
 
@@ -52,7 +53,10 @@ jQuery(document).ready(function(){
     	&& document.URL.indexOf('genomeevolution.org') == -1
     	&& document.URL.indexOf('coge.iplantcollaborative.org') == -1)
     {
-        $('#brand').addClass("dev");
+        // Show the build stamp (datetime + COGE_REF) over the logo instead of a
+        // static "Development" label; fall back to "Development" if unset.
+        var cogeBuild = (window.COGE_BUILD && window.COGE_BUILD.length) ? window.COGE_BUILD : 'Development';
+        $('#brand').attr('data-build', ' ' + cogeBuild).addClass("dev");
     }
     
     $('.dropdown-menu').mouseleave(function(e){

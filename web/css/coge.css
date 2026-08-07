@@ -1249,7 +1249,7 @@ h5 > small {
 }
 
 .dev:after {
-    content: " Development";
+    content: attr(data-build); /* build stamp (COGE_BUILD) set in header.tmpl; falls back to " Development" */
     font-size: 80%;
     color: red;
     position: absolute;
