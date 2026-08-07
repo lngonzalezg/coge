@@ -3,6 +3,7 @@ package CoGeX::Result::List;
 use strict;
 use warnings;
 use base 'DBIx::Class::Core';
+use HTML::Entities (); # §7.1 escape user fields in info()
 use CoGe::Accessory::Annotation;
 
 =head1 NAME
@@ -426,9 +427,11 @@ sub info {
     my $self = shift;
     my %opts = @_;
 
-    my $info = $self->name;
+    # §7.1 escape user-controlled fields (see Genome::info).
+    my $esc = sub { HTML::Entities::encode_entities(shift, q{<>&"'}) };
+    my $info = $esc->($self->name);
     $info = '&#x1f512; ' . $info if $self->restricted && !$opts{hideRestrictedSymbol}; #TODO move this into view code
-    $info .= ': ' . $self->description if $self->description;
+    $info .= ': ' . $esc->($self->description) if $self->description;
     #$info .= ' (' . $self->type->name . ')' if $self->type;
     $info .= ' (id' . $self->id . ')';
     return $info;

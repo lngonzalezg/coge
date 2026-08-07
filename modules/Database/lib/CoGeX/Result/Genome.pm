@@ -7,6 +7,7 @@ use base 'DBIx::Class::Core';
 use CoGe::Core::Chromosomes;
 use CoGe::Core::Storage qw( get_genome_seq get_genome_file );
 use CoGe::Accessory::Utils qw( commify );
+use HTML::Entities (); # §7.1 escape user fields in info()
 use JSON qw(encode_json);
 use Data::Dumper;
 use Text::Wrap;
@@ -953,14 +954,21 @@ See Also   :
 sub info {
     my $self = shift;
     my %opts = @_;
-    
+
+    # §7.1 info() is rendered as HTML (note the &#x1f512; entity) and flows into
+    # admin log descriptions, menus and share dialogs, so escape the
+    # user-controlled fields (organism/name/description) here -- a single choke
+    # point that neutralizes stored XSS at every downstream sink. Structural text
+    # and the lock entity are left intact.
+    my $esc = sub { HTML::Entities::encode_entities(shift, q{<>&"'}) };
+
     my $info;
     $info .= "&#x1f512; "              if ($self->restricted && !$opts{hideRestrictedSymbol}); #TODO move this into view code
-    $info .= $self->organism->name     if $self->organism;
-    $info .= " (" . $self->name . ")"  if $self->name;
-    $info .= ": " . $self->description if $self->description;
+    $info .= $esc->($self->organism->name)     if $self->organism;
+    $info .= " (" . $esc->($self->name) . ")"  if $self->name;
+    $info .= ": " . $esc->($self->description) if $self->description;
     $info .= " (v" . $self->version . ", id" . $self->id . ")";
-    $info .= ': ' . $self->genomic_sequence_type->name
+    $info .= ': ' . $esc->($self->genomic_sequence_type->name)
       if $self->genomic_sequence_type;
     return $info;
 }

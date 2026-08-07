@@ -31,6 +31,7 @@ use Data::GUID;
 use Data::Dumper;
 use File::Basename qw(fileparse basename);
 use File::Find;
+use HTML::Entities qw(encode_entities);
 
 BEGIN {
     use vars qw ($VERSION $FASTA_LINE_LEN @ISA @EXPORT);
@@ -88,19 +89,29 @@ sub trim {
     return $s;
 }
 
+# §7.1 Escape a value for embedding inside a JavaScript string literal. The old
+# version escaped only ' and " -- a backslash or a literal </script> still broke
+# out. Escape backslash+quotes, newlines, and neutralize </ so a script tag can't
+# be closed early.
 sub js_escape {
     my $s = shift;
-    $s =~ s/[\x00-\x1f]/ /g; # remove non-printable ascii chars
-    $s =~ s/\'/\\'/g;
-    $s =~ s/\"/\\"/g;
+    return $s unless defined $s;
+    $s =~ s/([\\'"])/\\$1/g;   # backslash-escape backslash and both quote chars
+    $s =~ s/\n/\\n/g;
+    $s =~ s/\r/\\r/g;
+    $s =~ s/[\x00-\x08\x0b\x0c\x0e-\x1f]/ /g; # drop other control chars
+    $s =~ s{</}{<\\/}g;        # prevent </script> (and </...) breakout
     return $s;
 }
 
+# §7.1 Escape a value for embedding as text/attribute in HTML. The old version
+# only converted the apostrophe, so < > & " passed through unchanged and
+# <script> was NOT neutralized. Actually encode the HTML metacharacters.
 sub html_escape {
     my $s = shift;
-    $s =~ s/[\x00-\x1f]/ /g; # remove non-printable ascii chars
-    $s =~ s/\'/\&\#8216\;/g; # convert apostrophe char
-    return $s;
+    return $s unless defined $s;
+    $s =~ s/[\x00-\x1f]/ /g;   # strip non-printable control chars (prior behavior)
+    return encode_entities($s, q{<>&"'});
 }
 
 sub print_fasta {

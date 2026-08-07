@@ -5,6 +5,7 @@ use warnings;
 use base 'DBIx::Class::Core';
 use File::Spec::Functions;
 use Data::Dumper;
+use HTML::Entities (); # §7.1 escape user fields in info()
 use POSIX;
 use Switch;
 
@@ -379,11 +380,13 @@ sub info {
         $source = '<no source>';
     }
 
+    # §7.1 escape user-controlled fields (see Genome::info).
+    my $esc = sub { HTML::Entities::encode_entities(shift, q{<>&"'}) };
     my $info;
     $info .= "&#x1f512; "                  if $self->restricted && !$opts{hideRestrictedSymbol}; #TODO move this into view code
-    $info .= $self->name;
-    $info .= ": " . $self->description if $self->description;
-    $info .= " (v" . $self->version . ", id" . $self->id . "): " . $source;
+    $info .= $esc->($self->name);
+    $info .= ": " . $esc->($self->description) if $self->description;
+    $info .= " (v" . $self->version . ", id" . $self->id . "): " . $esc->($source);
     return $info;
 }
 
