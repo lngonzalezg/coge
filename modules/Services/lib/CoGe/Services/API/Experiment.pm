@@ -104,8 +104,10 @@ sub fetch {
 sub fetch_annotations {
     my $self = shift;
     my $id = int($self->stash('id'));
-    my ($db) = CoGe::Services::Auth::init($self);
-    #TODO add error checking on ID parameter
+    my ($db, $user) = CoGe::Services::Auth::init($self);
+    # §7.8 require access to the experiment before listing its annotations.
+    my $experiment = $self->_get_experiment($id, 0, $db, $user);
+    return unless $experiment;
 
     $self->render(json => get_annotations($id, 'Experiment', $db, 1));
 }
@@ -120,7 +122,7 @@ sub fetch_annotation {
     my $experiment = $self->_get_experiment($id, 0, $db, $user);
     return unless $experiment;
 
-    my $annotation = get_annotation($aid, 'Experiment', $db);
+    my $annotation = get_annotation($aid, 'Experiment', $db, $id); # §7.8 bind :aid to :id
     $self->render(json => $annotation) if $annotation;
 }
 

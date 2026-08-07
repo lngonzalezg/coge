@@ -316,13 +316,18 @@ sub data {
 }
 
 sub _get_data {
-	my ($self, $num, $db) = @_;
+	my ($self, $num, $db, $user) = @_;
 	my $type = $self->param('type' . $num);
 	if ($type eq 'experiment') {
 		my $experiment = $db->resultset('Experiment')->find($self->param('eid' . $num));
+		return unless $experiment && $self->_can_view($experiment, $user); # §7.8
 		return _get_experiment_data($experiment->id, $experiment->data_type, $self->param('chr'), 0);
 	}
 	if ($type eq 'features') {
+		# §7.8 gate restricted genomes' features too.
+		my $genome = $db->resultset('Genome')->find($self->param('gid' . $num));
+		return unless $genome
+			&& ( !$genome->restricted || ( $user && $user->has_access_to_genome($genome) ) );
 		return _get_db_data($self->param('gid' . $num), $self->param('features' . $num), $self->param('chr'), $db->storage->dbh);
 	}
 }
@@ -510,8 +515,9 @@ sub overlaps {
 	my $not = $self->param('not');
 
 	my ($db, $user, $conf) = CoGe::Services::Auth::init($self);
-	my $data1 = $self->_get_data(1, $db);
-	my $data2 = $self->_get_data(2, $db);
+	my $data1 = $self->_get_data(1, $db, $user);
+	my $data2 = $self->_get_data(2, $db, $user);
+	return unless $data1 && $data2; # §7.8 access denied to one of the sources
 	my $hits = $not ? _not_in($data1, $data2) : _in($data1, $data2);
 	if ($hits) {
 		$self->render(json => $hits);

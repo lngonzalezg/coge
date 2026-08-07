@@ -166,6 +166,10 @@ sub delete_annotation {
     return $error if $error;
 
     my $annotation = $db->resultset($object_type . 'Annotation')->find( { lc($object_type) . '_annotation_id' => $aid } );
+    # §7.8 the annotation must belong to the object the caller is authorized for.
+    return 'Annotation not found' unless $annotation;
+    return 'Access denied'
+        unless _annotation_owner_id($annotation, $object_type) == $object_id;
     $object_type = lc($object_type);
     $object_type = 'notebook' if $object_type eq 'list';
     delete_bisque_image($object_type, $object_id, $annotation->bisque_file, $annotation->bisque_id, $user) if $annotation->bisque_file;
@@ -226,11 +230,16 @@ sub export_annotations {
 }
 
 sub get_annotation {
-    my ($aid, $object_type, $db) = @_;
+    my ($aid, $object_type, $db, $object_id) = @_;
     return unless $aid && $object_type && $db;
 
     my $annotation = $db->resultset($object_type . 'Annotation')->find($aid);
     return unless $annotation;
+
+    # §7.8 If a parent id is supplied, the annotation must belong to it -- so
+    # having access to object X cannot read an annotation of object Z.
+    return if defined $object_id
+        && _annotation_owner_id($annotation, $object_type) != $object_id;
 
     my $type       = '';
     my $type_group = '';
@@ -344,6 +353,13 @@ sub update_annotation {
         case 'genome' { $annotation = $db->resultset('GenomeAnnotation')->find($annotation_id); }
         case 'notebook' { $annotation = $db->resultset('ListAnnotation')->find($annotation_id); }
     }
+    # §7.8 _init already checked owner/editor on target_id; also require the
+    # annotation to belong to that target so you can't edit another object's.
+    unless ( $annotation
+        && _annotation_owner_id($annotation, $opts{target_type}) == $opts{target_id} ) {
+        warn 'update_annotation: annotation does not belong to target';
+        return;
+    }
     $annotation->annotation($opts{text});
     $annotation->link($link);
     $annotation->annotation_type_id($type_id);
@@ -432,6 +448,16 @@ sub _create_image {
         image    => $contents
     });
     return unless $image;
+}
+
+# §7.8 The parent id of an annotation row (genome_id/experiment_id/list_id).
+# object_type may be DB-case ('Genome'/'Experiment'/'List') or the API's
+# lowercase 'notebook'; both map to the right FK column.
+sub _annotation_owner_id {
+    my ($annotation, $object_type) = @_;
+    my $t = lc($object_type);
+    $t = 'list' if $t eq 'notebook';
+    return $annotation->get_column($t . '_id');
 }
 
 sub _get_object {

@@ -193,6 +193,15 @@ sub histogram {
     my $self = shift;
     my $eid = $self->stash('eid');
     my $chr = $self->stash('chr');
+
+    # §7.8 This endpoint had no auth and even writes a .hist file. Require access
+    # to the experiment (public experiments still work; restricted need access).
+    my ($db, $user) = CoGe::Services::Auth::init($self);
+    my $experiment = $db->resultset('Experiment')->find($eid);
+    return unless $experiment
+        && ( !$experiment->restricted
+            || ( $user && $user->has_access_to_experiment($experiment) ) );
+
     my $storage_path = get_experiment_path($eid);
     my $hist_file = "$storage_path/value1_$chr.hist";
     if (!-e $hist_file) {

@@ -146,8 +146,10 @@ sub fetch {
 sub fetch_annotations {
     my $self = shift;
     my $id = int($self->stash('id'));
-    my ($db) = CoGe::Services::Auth::init($self);
-    #TODO add error checking on ID param
+    my ($db, $user) = CoGe::Services::Auth::init($self);
+    # §7.8 require access to the genome before listing its annotations.
+    my $genome = $self->_get_genome($id, 0, $db, $user);
+    return unless $genome;
 
     $self->render(json => get_annotations($id, 'Genome', $db, 1));
 }
@@ -162,7 +164,7 @@ sub fetch_annotation {
     my $genome = $self->_get_genome($id, 0, $db, $user);
     return unless $genome;
 
-    my $annotation = get_annotation($aid, 'Genome', $db);
+    my $annotation = get_annotation($aid, 'Genome', $db, $id); # §7.8 bind :aid to :id
     $self->render(json => $annotation) if $annotation;
 }
 

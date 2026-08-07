@@ -871,19 +871,19 @@ sub make_items_public {
         #print STDERR "make_items_public $item_id $item_type\n";
         if ( $item_type eq 'genome' ) {
             my $genome = $DB->resultset('Genome')->find($item_id);
-            next unless ( $USER->has_access_to_genome($genome) );
+            next unless ( $genome && $USER->is_owner_editor(genome => $item_id) ); # §7.8 owner/editor, not read
             $genome->restricted(!$make_public);
             $genome->update();
         }
         elsif ( $item_type eq 'experiment' ) {
             my $experiment = $DB->resultset('Experiment')->find($item_id);
-            next unless $USER->has_access_to_experiment($experiment);
+            next unless $experiment && $USER->is_owner_editor(experiment => $item_id); # §7.8 owner/editor, not read
             $experiment->restricted(!$make_public);
             $experiment->update();
         }
         elsif ( $item_type eq 'notebook' ) {
             my $notebook = $DB->resultset('List')->find($item_id);
-            next unless $USER->has_access_to_notebook($notebook);
+            next unless $notebook && $USER->is_owner_editor(notebook => $item_id); # §7.8 owner/editor, not read
             $notebook->restricted(!$make_public);
             $notebook->update();
         }
@@ -915,17 +915,17 @@ sub add_items_to_user_or_group {
         # print STDERR "add_items_to_user_or_group $item_id $item_type\n";
         if ( $item_type eq 'genome' ) {
             my $genome = $DB->resultset('Genome')->find($item_id);
-            next unless ( $USER->has_access_to_genome($genome) );
+            next unless ( $genome && $USER->is_owner_editor(genome => $item_id) ); # §7.8 owner/editor, not read
             push @verified, { id => $item_id, type => $ITEM_TYPE{genome}, type_name => $item_type, info => $genome->info_html };
         }
         elsif ( $item_type eq 'experiment' ) {
             my $experiment = $DB->resultset('Experiment')->find($item_id);
-            next unless $USER->has_access_to_experiment($experiment);
+            next unless $experiment && $USER->is_owner_editor(experiment => $item_id); # §7.8 owner/editor, not read
             push @verified, { id => $item_id, type => $ITEM_TYPE{experiment}, type_name => $item_type, info => $experiment->info_html };
         }
         elsif ( $item_type eq 'notebook' ) {
             my $notebook = $DB->resultset('List')->find($item_id);
-            next unless $USER->has_access_to_notebook($notebook);
+            next unless $notebook && $USER->is_owner_editor(notebook => $item_id); # §7.8 owner/editor, not read
             push @verified, { id => $item_id, type => $ITEM_TYPE{notebook}, type_name => $item_type, info => $notebook->info_html };
         }
     }

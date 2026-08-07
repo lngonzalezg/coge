@@ -86,8 +86,10 @@ sub fetch {
 sub fetch_annotations {
     my $self = shift;
     my $id = int($self->stash('id'));
-    my ($db) = CoGe::Services::Auth::init($self);
-    #TODO add error checking on ID param
+    my ($db, $user) = CoGe::Services::Auth::init($self);
+    # §7.8 require access to the notebook before listing its annotations.
+    my $notebook = $self->_get_notebook($id, 0, $db, $user);
+    return unless $notebook;
 
     $self->render(json => get_annotations($id, 'List', $db, 1));
 }
@@ -105,7 +107,7 @@ sub fetch_annotation {
         return;
     }
 
-    my $annotation = get_annotation($aid, 'List', $db);
+    my $annotation = get_annotation($aid, 'List', $db, $id); # §7.8 bind :aid to :id
     unless ($annotation) {
         $self->render(API_STATUS_NOTFOUND);
         return;
