@@ -7,6 +7,7 @@ use warnings;
 use Data::Dumper;
 use Moose;
 use JSON::XS;
+use Time::HiRes qw(sleep); # §7.10 so fractional sleeps don't truncate to sleep(0) (busy-loop)
 use ZMQ::LibZMQ3;
 use ZMQ::Constants qw/:all/;
 use Switch;
@@ -88,7 +89,13 @@ sub submit_workflow {
 
 sub wait_for_completion {
     my ($self, $id) = @_;
-    my ($status, $wait) = (undef, 0);
+    # §7.10 Exponential backoff: 1s, then doubling each poll (powers of 2),
+    # capped at 900s. The old loop incremented by 0.25 with core sleep(), so the
+    # sub-second waits truncated to sleep(0) and busy-looped a CPU while a job
+    # (or an unreachable JEX) stayed pending. Backing off also stops a stalled
+    # job from polling JEX tightly forever.
+    my $MAX_WAIT = 900;
+    my ($status, $wait) = (undef, 1);
 
     while (1) {
         $status = get_status($self, $id);
@@ -101,7 +108,8 @@ sub wait_for_completion {
             case /error/i      { return 0; }
             else {
                 sleep $wait;
-                $wait = $wait + 0.25;
+                $wait *= 2;
+                $wait = $MAX_WAIT if $wait > $MAX_WAIT;
             }
         }
     }

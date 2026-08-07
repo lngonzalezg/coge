@@ -407,10 +407,13 @@ sub self_or_default {    #from CGI.pm
         )                # slightly optimized for common case
       )
     {
-        $Q = CoGe::Accessory::Web->new unless defined($Q);
-        unshift( @_, $Q );
+        # §7.9 Use a FRESH object, never a persistent package global. Under
+        # mod_perl the interpreter is never recycled, so a cached $Q leaked
+        # per-request state (basefile/logfile/sqlitefile) into later requests
+        # served by the same worker.
+        unshift( @_, CoGe::Accessory::Web->new );
     }
-    return wantarray ? @_ : $Q;
+    return wantarray ? @_ : $_[0];
 }
 
 # Security pass 1 (A2): the old get_session_id was md5_base64($user_name . $remote_ip)
