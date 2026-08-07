@@ -5,6 +5,7 @@ use CGI::Carp 'fatalsToBrowser';
 use CoGeX;
 use CoGe::Accessory::Web;
 use CoGe::Accessory::Validate qw(valid_filename);
+use String::ShellQuote qw(shell_quote);
 use CoGe::Accessory::Utils qw( commify );
 use CoGe::Core::Genome qw(genomecmp genomecmp2);
 use HTML::Template;
@@ -468,19 +469,28 @@ sub get_genomes {
 sub add_to_irods {
     my %opts             = @_;
     my $dsgid            = $opts{dsgid};
+    # Audit §4.4/#7: $dsgid was interpolated into a shell command, and the DB-sourced
+    # organism/dataset names (user-supplied at load time) were placed inside single quotes
+    # that a literal quote breaks out of (second-order injection). Require an integer
+    # dsgid and shell_quote every interpolated value.
+    return unless defined $dsgid && $dsgid =~ /^\d+$/;
     my $dsg              = $coge->resultset('Genome')->find($dsgid);
-    my $add_to_irods_bin = $P->{BINDIR} . "/irods/add_to_irods.pl";
-    my $cmd              = $add_to_irods_bin . " -file " . $dsg->file_path;
-    my $new_name         = $dsg->organism->name . " " . $dsg->id . ".faa";
-    $cmd .= " -new_name '$new_name'";
-    $cmd .= " -dir collections";
-    $cmd .= " -tag 'organism=" . $dsg->organism->name . "'";
-    $cmd .= " -tag version=" . $dsg->version;
-    $cmd .= " -tag 'sequence_type=" . $dsg->sequence_type->name . "'";
+    return unless $dsg;
     my ($ds) = $dsg->datasets;
-    $cmd .= " -tag 'source_name=" . $ds->name . "'";
-    $cmd .= " -tag 'source_link=" . $ds->link . "'" if $ds->link;
-    $cmd .= " -tag 'imported_from=CoGe: http://genomevolution.org/CoGe/OrganismView.pl?dsgid=$dsgid'";
+    my $add_to_irods_bin = $P->{BINDIR} . "/irods/add_to_irods.pl";
+    my $new_name         = $dsg->organism->name . " " . $dsg->id . ".faa";
+    my $cmd = join( ' ',
+        shell_quote($add_to_irods_bin),
+        '-file',     shell_quote($dsg->file_path),
+        '-new_name', shell_quote($new_name),
+        '-dir',      'collections',
+        '-tag',      shell_quote('organism=' . $dsg->organism->name),
+        '-tag',      shell_quote('version=' . $dsg->version),
+        '-tag',      shell_quote('sequence_type=' . $dsg->sequence_type->name),
+        '-tag',      shell_quote('source_name=' . $ds->name),
+        ( $ds->link ? ('-tag', shell_quote('source_link=' . $ds->link)) : () ),
+        '-tag',      shell_quote('imported_from=CoGe: http://genomevolution.org/CoGe/OrganismView.pl?dsgid=' . $dsgid),
+    );
     system($cmd);
 #    print STDERR $cmd;
 

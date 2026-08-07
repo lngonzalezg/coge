@@ -228,6 +228,13 @@ sub run_aragorn {
     my $email       = $opts{email};
     my $seq         = $opts{seq};
 
+    # Audit §4.4: these aragorn options are concatenated into a shell command ($ARAGORN
+    # $precommand) run below. Reject any that carry shell metacharacters.
+    for my $ref ( \$search_type, \$gcode, \$dna_top, \$strand, \$pseudo, \$format ) {
+        return if defined $$ref && $$ref !~ /^[\w.\-]*$/;
+    }
+    return if defined $orgid && length $orgid && $orgid !~ /^\d+$/;
+
     $cogeweb = CoGe::Accessory::Web::initialize_basefile( tempdir => $TEMPDIR );
     my $outfile = $cogeweb->basefile . "_aragorn.output";
 

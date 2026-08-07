@@ -142,9 +142,11 @@ sub gen_body {
     #$template->param( BETA => 1 );
 
     #comparison algorithm
+    # Audit §4.4: restrict algo to a bare word (it selects the search program and is
+    # carried into task descriptions); default to 'last' if absent or malformed.
     my $algo;
     $algo = $FORM->param('algo') if $FORM->param('algo');
-    $algo = "last" unless $algo;
+    $algo = "last" unless defined $algo && $algo =~ /^\w+$/;
     if ( $algo eq "last" ) {
         $template->param( 'LAST' => "selected" );
     }

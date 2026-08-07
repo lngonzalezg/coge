@@ -6,6 +6,7 @@ no warnings('redefine');
 use CoGeX;
 use CoGe::JEX::Jex;
 use CoGe::Accessory::Web qw(url_for get_command_path);
+use CoGe::Accessory::Validate qw(valid_filename);
 use CoGe::Accessory::Utils qw( commify get_link_coords );
 use CoGe::Accessory::blast_report;
 use CoGe::Accessory::blastz_report;
@@ -1007,6 +1008,13 @@ sub generate_chromosome_images {
     my $large_width    = $opts{large_width} || 3 * $width;
     my $resultslimit   = $opts{resultslimit};
     my $imagefile_name = $opts{filename} || "null";
+    # Audit §4.4: $imagefile_name is interpolated into an `ls` shell command below; the
+    # client controls the 'filename' param. Restrict to a safe basename (the code appends
+    # its own "_*.png" glob).
+    if ( $imagefile_name ne "null" ) {
+        my $safe = valid_filename($imagefile_name);
+        $imagefile_name = defined $safe ? $safe : "null";
+    }
     my $color_hsps     = $opts{color_hsps};
     my $height         = ( $width / 16 );
     my $large_height = ( $large_width / 16 ) <= 64 ? ( $large_width / 16 ) : 64;
@@ -1537,8 +1545,13 @@ qq{<div class=small>Subject: $org, Chromosome: $chr</div>} .
 
 sub generate_overview_image {
     my %opts        = @_;
-    my $basename    = $opts{basename};
+    # Audit §4.4: $basename/$type reach an `ls` shell command (and $basename is used as a
+    # File::Temp basename below). The client controls both. Reduce $basename to a safe
+    # component; reject the request if it is invalid.
+    my $basename    = valid_filename( $opts{basename} );
+    return unless defined $basename;
     my $type        = $opts{type};
+    $type = undef if defined $type && $type !~ /^[\w.\-]+$/;
     my $image_width = $opts{width};
     my @set         = split( /\n/, `ls $TEMPDIR/$basename*.blast` );
     my @reports;

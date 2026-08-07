@@ -2884,7 +2884,11 @@ sub run_bl2seq {
     my $comp_adj     = $opts{comp_adj};
     my $eval_cutoff  = $opts{eval_cutoff};
 
-    $program = "blastn" unless $program;
+    # Audit §4.4: $program (-p $program) and $blast_params (raw append) reach the bl2seq
+    # shell command below. Restrict the program to a bare word and strip shell
+    # metacharacters from the free-form params.
+    $program = "blastn" unless defined $program && $program =~ /^\w+$/;
+    $blast_params = '' if defined $blast_params && $blast_params =~ /[;&|<>`\$()"'\\\r\n]/;
     my @reports;
     my $total_runs = number_of_runs($sets);
     my $count      = 0;
@@ -4109,6 +4113,29 @@ sub get_algorithm_options {
     my $chaos_gap_start      = $opts{chaos_gap_start};
     my $chaos_gap_extension  = $opts{chaos_gap_extension};
     my $chaos_params         = $opts{chaos_params};
+
+    # Audit §4.4: every value below is concatenated into an alignment shell command (run
+    # via backticks by the GEvo runners) and unauthenticated. Drop non-numeric values from
+    # the numeric options, strip the free-form *_params of shell metacharacters, and
+    # constrain the enum-ish flags so none can inject.
+    my $gevo_num_re = qr/^\d+(?:\.\d+)?(?:[eE][-+]?\d+)?$/;
+    for my $ref ( \$blast_wordsize, \$blast_gapopen, \$blast_gapextend, \$blast_mismatch,
+                  \$blast_match, \$blast_eval,
+                  \$blastz_wordsize, \$blastz_chaining, \$blastz_threshold, \$blastz_mask,
+                  \$blastz_gap_start, \$blastz_gap_extension,
+                  \$lagan_min_length, \$lagan_max_gap, \$lagan_percent_id,
+                  \$dialign_motif_weight, \$dialign_motif_penalty, \$dialign_min_score,
+                  \$dialign_max_gap, \$dialign_split_score,
+                  \$chaos_word_length, \$chaos_score_cutoff, \$chaos_rescore_cutoff,
+                  \$chaos_lookback, \$chaos_gap_length, \$chaos_gap_start, \$chaos_gap_extension ) {
+        $$ref = undef if defined $$ref && $$ref !~ $gevo_num_re;
+    }
+    for my $ref ( \$blast_params, \$blastz_params, \$lagan_params, \$dialign_params, \$chaos_params ) {
+        $$ref = '' if defined $$ref && $$ref =~ /[;&|<>`\$()"'\\\r\n]/;
+    }
+    for my $ref ( \$blast_filter, \$dialign_motif_motif, \$dialign_use_anchor, \$dialign_anchor_program ) {
+        $$ref = undef if defined $$ref && $$ref !~ /^[\w.\-]*$/;
+    }
 
     my (
         $blastz_string, $blastz_link,    $blast_string, $blast_link,

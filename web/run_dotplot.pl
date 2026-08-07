@@ -160,6 +160,27 @@ sub generate_dotplot {
     my $color_type   = $opts{color_type};
     my $color_scheme = $opts{color_scheme};
 
+    # Audit §4.4: generate_dotplot builds a shell command (run via backticks below) from
+    # these request-derived values, unauthenticated. Validate each interpolated scalar to
+    # its grammar so none can inject: numeric options that fail are dropped (and re-
+    # defaulted); qchr/schr (which sit in double-quoted -chr args) must be a safe
+    # chromosome name or the request is aborted.
+    for my $ref ( \$dsgid1, \$dsgid2, \$fid1, \$fid2, \$width, \$grid, \$color_type, \$color_scheme, \$kstype ) {
+        $$ref = undef if defined $$ref && $$ref !~ /^\d+$/;
+    }
+    for my $ref ( \$min, \$max ) {
+        $$ref = undef if defined $$ref && $$ref !~ /^-?\d+(?:\.\d+)?$/;
+    }
+    for my $ref ( \$metric, \$relationship, \$flip ) {
+        $$ref = undef if defined $$ref && $$ref !~ /^[\w.\-]*$/;
+    }
+    for my $c ( $qchr, $schr ) {
+        return if defined $c && length $c && $c !~ /^[\w.\-]+$/;
+    }
+    $flip  = 0   unless defined $flip;
+    $width = 600 unless defined $width;
+    $grid  = 0   unless defined $grid;
+
     my $cmd = $DOTPLOT;
     if ( $ksdb && -r $ksdb ) {
         $cmd     .= qq{ -ksdb $ksdb -kst $kstype};

@@ -248,6 +248,13 @@ sub run {
     my $gap_open   = $opts{gap_open};
     my $gap_ext    = $opts{gap_ext};
     my $iteration  = $opts{iteration};
+
+    # Audit §4.4: these clustalw options are concatenated into a shell command below.
+    # Drop non-numeric gap/iteration values and reject a matrix with metacharacters.
+    for my $ref ( \$gap_open, \$gap_ext, \$iteration ) {
+        $$ref = undef if defined $$ref && $$ref !~ /^\d+$/;
+    }
+    $matrix = undef if defined $matrix && $matrix !~ /^[\w.\-]+$/;
     my $format     = "clustal";           #$opts{format}; #set by default now
     my $gen_matrix = 1;                   #$opts{gen_matrix}; #on by default now
     my $codon      = $opts{codon_align};
@@ -889,6 +896,10 @@ sub sort_nt3 {
 sub create_tree_image {
     my $treefile = shift;
     $treefile =~ s/$TEMPURL/$TEMPDIR/;
+    # Audit §4.4: $treefile is request-derived (create_tree_image positional arg) and is
+    # interpolated into $NEWICKTOPS/$CONVERT shell commands. Require a safe path (no shell
+    # metacharacters, no traversal) before proceeding.
+    return unless defined $treefile && $treefile =~ m{^[\w./\-]+$} && $treefile !~ /\.\./;
     my $treebase = $treefile;
     $treebase =~ s/\.ph$//;
     my $treeps  = $treebase . ".ps";

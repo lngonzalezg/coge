@@ -267,11 +267,15 @@ sub gen_body {
 	$template->param( AUTOGO => $autogo );
 
     #special admin function to delete results from a synmap job off the server
-    if ($USER->is_admin && $FORM->param('clean')&& $FORM->param('gid1') && $FORM->param('gid2') ){
+    # Audit §4.4/#9: gid1/gid2 were interpolated into a shell command (admin-only, but no
+    # CSRF token, so a crafted link clicked by an admin = RCE). Require integer ids.
+    if ($USER->is_admin && $FORM->param('clean') && $FORM->param('gid1') && $FORM->param('gid2')
+        && $FORM->param('gid1') =~ /^\d+$/ && $FORM->param('gid2') =~ /^\d+$/ ){
         my $cmd = $config->{CLEAN_SYNMAP}." -gid1 ".$FORM->param('gid1') ." -gid2 ".$FORM->param('gid2'). " -config ".$ENV{COGE_HOME}.'coge.conf';
         `$cmd`;
     }
-    if ($USER->is_admin && $FORM->param('clean')&& $FORM->param('dsgid1') && $FORM->param('dsgid2') ){
+    if ($USER->is_admin && $FORM->param('clean') && $FORM->param('dsgid1') && $FORM->param('dsgid2')
+        && $FORM->param('dsgid1') =~ /^\d+$/ && $FORM->param('dsgid2') =~ /^\d+$/ ){
         my $cmd = $config->{CLEAN_SYNMAP}." -gid1 ".$FORM->param('dsgid1') ." -gid2 ".$FORM->param('dsgid2'). " -config ".$ENV{COGE_HOME}.'coge.conf';
         `$cmd`;
     }
