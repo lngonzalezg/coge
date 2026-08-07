@@ -96,13 +96,13 @@ sub init {
         if ($token) { # Agave
             ($uname, $fname, $lname, $email) = validate_agave($username, $token);
         }
-        elsif ($token2) { # DE JWT
+        elsif ($token2) { # DE JWT (RS256 against the DE RSA public key)
             my $de_public_key_path = catfile($conf->{RESOURCEDIR}, $conf->{DE_PUBLIC_KEY});
-            ($uname, $fname, $lname, $email) = validate_jwt($token2, $de_public_key_path);
+            ($uname, $fname, $lname, $email) = validate_jwt($token2, $de_public_key_path, 'RS256');
         }
-        elsif ($token3) { # CoGe JWT
+        elsif ($token3) { # CoGe-internal JWT (HS256 with the shared secret; audit 9.2)
             my $coge_secret_path = catfile($conf->{RESOURCEDIR}, $conf->{JWT_COGE_SECRET});
-            ($uname, $fname, $lname, $email) = validate_jwt($token3, $coge_secret_path);
+            ($uname, $fname, $lname, $email) = validate_jwt($token3, $coge_secret_path, 'HS256');
         }
         
         unless ($uname) {
@@ -127,6 +127,7 @@ sub init {
 sub validate_jwt {
     my $token = shift;
     my $key_path = shift;
+    my $alg = shift; # audit 9.2: 'RS256' (DE) or 'HS256' (CoGe-internal)
     return unless $token;
 #    print STDERR "CoGe::Services::Auth::validate_jwt\n";
     
@@ -137,7 +138,7 @@ sub validate_jwt {
     }
     
     # Decode token and get payload
-    my $claims = jwt_decode_token($token, $key_path);
+    my $claims = jwt_decode_token($token, $key_path, $alg);
     unless ($claims) {
         print STDERR "CoGe::Services::Auth::validate_jwt: JWT token decoding failed\n";
         return;

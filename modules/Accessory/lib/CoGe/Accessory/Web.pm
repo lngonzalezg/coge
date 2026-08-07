@@ -29,6 +29,7 @@ use Mail::Mailer;
 use URI;
 use MIME::Base64 qw(decode_base64 encode_base64);
 use Crypt::OpenSSL::RSA;
+use Digest::SHA (); # audit 9.2: HS256 verification for the CoGe-internal JWT path
 use Time::HiRes qw(time);
 # Security pass 1: load the validators WITHOUT importing (Validate has no default
 # @EXPORT). namespace::clean below would strip imported subs from this package, so we
@@ -719,7 +720,16 @@ sub _jwt_b64url_decode {
 # mdb added 9/23/15 - for API authentication with DE
 sub jwt_decode_token {
     my $token = shift;           # JWT token
-    my $key_path = shift; # file path to public RSA key
+    my $key_path = shift; # file path to key material
+    # Audit 9.2 / A1 reconcile: the expected signature algorithm. The DE path
+    # (x-iplant-de-jwt) is RS256 against an RSA public key; the CoGe-internal path
+    # (x-coge-jwt) is HS256 with a shared secret (that is what the SynMap Ks / fractionation
+    # -bias signers actually emit). A1 pinned RS256 for both, which silently rejected the
+    # CoGe-internal tokens (they had only ever "passed" because the pre-A1 code discarded
+    # the verify result). We now verify each with its real algorithm, pinned per caller so
+    # an attacker still cannot mix algorithms.
+    my $expected_alg = shift;
+    $expected_alg = 'RS256' unless defined $expected_alg;
 #    print STDERR "Web::jwt_decode_token token=", ($token ? $token : ''), " key_path=", ($key_path ? $key_path : ''), "\n";
     return unless ($token and $key_path);
     
@@ -744,12 +754,11 @@ sub jwt_decode_token {
         print STDERR "Web::jwt_decode_token ERROR: missing header\n";
         return;
     }
-    # Security pass 1 (A1): pin the algorithm to RS256 only. This is an RSA public-key
-    # verification path; accepting HS256 here is an algorithm-confusion shape (an HMAC
-    # token verified against RSA material), so reject it outright rather than relying on
-    # the RSA verify to fail by accident.
-    unless ($header->{alg} && uc($header->{alg}) eq 'RS256') {
-        print STDERR "Web::jwt_decode_token ERROR: unsupported algorithm (RS256 required), header=", Dumper $header, "\n";
+    # Pin the header algorithm to exactly what this caller expects (RS256 for DE, HS256
+    # for the CoGe-internal signer). Pinning per-caller prevents algorithm-confusion: an
+    # attacker cannot present an HS256 token to the RS256 path or vice versa.
+    unless ($header->{alg} && uc($header->{alg}) eq uc($expected_alg)) {
+        print STDERR "Web::jwt_decode_token ERROR: unsupported algorithm (expected $expected_alg), header=", Dumper $header, "\n";
         return;
     }
     unless ($header->{typ} && (uc($header->{typ}) eq 'JWS' || uc($header->{typ}) eq 'JWT')) {
@@ -800,22 +809,42 @@ sub jwt_decode_token {
         return;
     }
     
-    # Verify the token signature using the public key.
-    # Security pass 1 (A1): previously $valid was computed, printed, and DISCARDED --
-    # the function returned $claims unconditionally, so any signature (or none) was
-    # accepted. Now the result is tested and BOTH a false result and a verification
-    # error fail closed.
+    # Verify the token signature.
+    # Security pass 1 (A1): the result is tested (was discarded); both a false result and
+    # a verification error fail closed.
+    my $signed64 = "$header64.$claims64";
     my $valid = 0;
-    eval { # use eval to contain errors
-        my $signed64 = "$header64.$claims64";
-        my $rsa_pub = Crypt::OpenSSL::RSA->new_public_key($key_string);
-        $rsa_pub->use_sha256_hash();
-        $valid = $rsa_pub->verify($signed64, $signature);
-        1;
-    } or do {
-        print STDERR "Web::jwt_decode_token ERROR: signature verification failed: $@\n";
-        return;
-    };
+    if (uc($expected_alg) eq 'HS256') {
+        # CoGe-internal path: HMAC-SHA256 with the shared secret. The Python signers read
+        # the secret file with .strip(), so match that here. Constant-time compare.
+        eval {
+            my $secret = $key_string;
+            $secret =~ s/^\s+//; $secret =~ s/\s+$//;
+            my $computed = Digest::SHA::hmac_sha256($signed64, $secret);
+            if (length($computed) == length($signature)) {
+                my $diff = 0;
+                $diff |= (ord(substr($computed, $_, 1)) ^ ord(substr($signature, $_, 1)))
+                    for 0 .. length($computed) - 1;
+                $valid = ($diff == 0) ? 1 : 0;
+            }
+            1;
+        } or do {
+            print STDERR "Web::jwt_decode_token ERROR: HS256 verification failed: $@\n";
+            return;
+        };
+    }
+    else {
+        # RS256 path (DE): verify against the RSA public key.
+        eval {
+            my $rsa_pub = Crypt::OpenSSL::RSA->new_public_key($key_string);
+            $rsa_pub->use_sha256_hash();
+            $valid = $rsa_pub->verify($signed64, $signature);
+            1;
+        } or do {
+            print STDERR "Web::jwt_decode_token ERROR: RS256 verification failed: $@\n";
+            return;
+        };
+    }
     unless ($valid) {
         print STDERR "Web::jwt_decode_token ERROR: invalid signature\n";
         return;

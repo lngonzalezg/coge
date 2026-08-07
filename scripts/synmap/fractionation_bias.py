@@ -63,6 +63,7 @@ parser.add_argument("--apiurl",
                     help="URL to CoGe genomes API endpoint (i.e. https://genomevolution.org/coge/api/v1/genomes)",
                     type=str)
 parser.add_argument("--user", help="User requesting job (CoGe username)", type=str)
+parser.add_argument("--secret", help="Path to the CoGe JWT shared-secret file (HS256)", type=str, default=None)
 args = parser.parse_args()
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -123,11 +124,26 @@ if args.user == '':  # Anonymous user case.
     query_api = requests.get(args.apiurl.rstrip('/') + '/' + str(args.query))
     target_api = requests.get(args.apiurl.rstrip('/') + '/' + str(args.target))
 else:  # Registered user case, attempt authentication.
-    token = jwt.encode({'sub': args.user,
-                        'exp': datetime.utcnow() + timedelta(seconds=60),
-                        'iat': datetime.utcnow()},
-                       'fracbias', algorithm='HS256')
-    get_headers = {'x-coge-jwt': token}
+    # Audit 9.2: sign with the shared CoGe JWT secret (HS256) so the server can actually
+    # verify the token. The old hardcoded 'fracbias' key was a public string in the repo
+    # (forgeable by anyone) and no longer matches the server, which now verifies HS256
+    # against the secret file.
+    fb_secret = None
+    if args.secret:
+        try:
+            with open(args.secret) as _sf:
+                fb_secret = _sf.read().strip()
+        except Exception as e:
+            stderr.write("fractionation_bias.py: cannot read --secret file: %s\n" % str(e))
+    if fb_secret:
+        token = jwt.encode({'sub': args.user,
+                            'exp': datetime.utcnow() + timedelta(seconds=60),
+                            'iat': datetime.utcnow()},
+                           fb_secret, algorithm='HS256')
+        get_headers = {'x-coge-jwt': token}
+    else:
+        # No usable secret -> do not send a bogus token; fall back to anonymous access.
+        get_headers = {}
     query_api = requests.get(args.apiurl.rstrip('/') + '/' + str(args.query), headers=get_headers)
     target_api = requests.get(args.apiurl.rstrip('/') + '/' + str(args.target), headers=get_headers)
 

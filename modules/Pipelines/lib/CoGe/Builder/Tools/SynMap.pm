@@ -1213,7 +1213,11 @@ sub build1x1 {
 				[ '--output',       $result_path,             0 ],
 				[ '--prefix',       $fb_prefix,               0 ],
 				[ '--apiurl',       internal_url_for(api_url_for("genomes")), 0],
-				[ '--user',         ( $user ? $user->name : '""'), 0]
+				[ '--user',         ( $user ? $user->name : '""'), 0],
+				# Audit 9.2: pass the shared JWT secret path so fracbias signs HS256 with
+				# the real secret (matching the server verifier), not the old public
+				# 'fracbias' literal.
+				[ '--secret',       catfile($config->{RESOURCEDIR}, $config->{JWT_COGE_SECRET}), 0]
 			],
 			inputs => [
 				$final_dagchainer_file, $condensed,
