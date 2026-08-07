@@ -319,9 +319,14 @@ sub is_ajax {
 }
 
 sub dispatch {
-    my ( $self, $form, $functions, $default_sub ) = self_or_default(@_);
+    my ( $self, $form, $functions, $default_sub, $access ) = self_or_default(@_);
     my $content_type = $ENV{'CONTENT_TYPE'};
 
+    # Security pass 2 (X2): optional deny-by-default authorization gate. A page opts in by
+    # passing a 5th arg: { map => { fname => 'public'|'user'|'admin', ... }, user => $USER }.
+    # When a map is present, any AJAX function it does not explicitly mark is DENIED to a
+    # non-admin (fail closed). Pages that pass no map keep the previous behaviour, so this
+    # is incremental and does not break unmigrated pages.
     if ($content_type =~ /application\/json/) {
         my $payload = $form->param('POSTDATA');
         my ($params, $resp);
@@ -336,6 +341,8 @@ sub dispatch {
             if (not defined $functions->{$fname}) {
                 carp "Web::dispatch: function '$fname' not found!";
                 $resp = encode_json({ error => { NOT_FOUND => $NOT_FOUND }});
+            } elsif (not _dispatch_access_ok($access, $fname)) {
+                $resp = encode_json({ error => { Auth => "Access denied" }});
             } else {
                 $resp = $functions->{$fname}->($params);
             }
@@ -349,6 +356,10 @@ sub dispatch {
         my $fname = get_fname($form);
         if ($fname) {
             die "Web::dispatch: function '$fname' not found!" if (not defined $functions->{$fname});
+            if (not _dispatch_access_ok($access, $fname)) {
+                print $form->header, encode_json({ error => { Auth => "Access denied" }});
+                return;
+            }
             #my %args = $form->Vars;
             #print STDERR Dumper \%args;
             if ( $args{args} ) {
@@ -363,6 +374,22 @@ sub dispatch {
             print $form->header, $default_sub->();
         }
     }
+}
+
+# Security pass 2 (X2): evaluate the optional access declaration for a dispatched function.
+# Returns true (allowed) when no access map was supplied (unmigrated page). When a map IS
+# supplied, an undeclared function fails closed.
+sub _dispatch_access_ok {
+    my ( $access, $fname ) = @_;
+    return 1 unless $access && ref($access) eq 'HASH' && $access->{map};
+    my $user  = $access->{user};
+    my $level = $access->{map}{$fname};
+    $level = 'admin' unless defined $level;   # deny-by-default: undeclared => admin-only
+    return 1 if $level eq 'public';
+    return 0 unless $user;                    # user/admin levels require a real user
+    if ($level eq 'user')  { return ( $user->is_public ? 0 : 1 ); }
+    if ($level eq 'admin') { return ( $user->is_admin  ? 1 : 0 ); }
+    return 0;
 }
 
 sub self_or_default {    #from CGI.pm

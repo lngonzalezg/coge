@@ -73,7 +73,49 @@ our $node_types = CoGeX::node_types();
     get_uptime		                => \&get_uptime,
 );
 
-CoGe::Accessory::Web->dispatch( $FORM, \%FUNCTION, \&gen_html );
+# Security pass 2 (Z1/X2): deny-by-default access declaration for every AJAX function.
+# 'public' = anyone (UI helper), 'user' = any logged-in user (functions carry their own
+# owner/ownership checks, e.g. modify_item's is_admin||is_owner and the cancel/restart
+# owner check below), 'admin' = admin only (cross-user enumeration / console stats).
+# Any function NOT listed here fails closed (admin-only) via Web::dispatch.
+my %ACCESS = (
+    user_is_admin                   => 'public',
+    # logged-in user (own items/jobs/groups; internal checks apply)
+    search_users                    => 'user',
+    add_items_to_user_or_group      => 'user',
+    remove_items_from_user_or_group => 'user',
+    get_share_dialog                => 'user',
+    get_roles                       => 'user',
+    search_share                    => 'user',
+    modify_item                     => 'user',
+    cancel_job                      => 'user',
+    restart_job                     => 'user',
+    get_jobs                        => 'user',
+    get_group_dialog                => 'user',
+    add_users_to_group              => 'user',
+    remove_user_from_group          => 'user',
+    change_group_role               => 'user',
+    toggle_star                     => 'user',
+    update_comment                  => 'user',
+    # admin console (cross-user enumeration / platform stats)
+    search_stuff                    => 'admin',
+    user_info                       => 'admin',
+    get_history                     => 'admin',
+    update_history                  => 'admin',
+    get_user_nodes                  => 'admin',
+    get_group_nodes                 => 'admin',
+    get_user_table                  => 'admin',
+    get_group_table                 => 'admin',
+    get_total_table                 => 'admin',
+    get_jobs_table                  => 'admin',
+    get_user_jobs_table             => 'admin',
+    get_user_jobs                   => 'admin',
+    gen_tree_json                   => 'admin',
+    get_total_queries               => 'admin',
+    get_uptime                      => 'admin',
+);
+
+CoGe::Accessory::Web->dispatch( $FORM, \%FUNCTION, \&gen_html, { map => \%ACCESS, user => $user } );
 
 sub gen_html {
 	my $html;
@@ -345,6 +387,14 @@ sub remove_items_from_user_or_group {
 	my ( $target_id, $target_type ) = $target_item =~ /(\d+)\:(\d+)/;
 
 	next unless ( $target_id and $target_type );
+
+	# Security pass 2 (Z1): previously this checked access to the ITEM but never authority
+	# over the TARGET, so a user with read access to a genome could remove it from ANOTHER
+	# user's/group's collection. Require the caller to own the target (self, or a group
+	# they own) or be admin.
+	unless ( _has_target_authority( $target_id, $target_type ) ) {
+		return encode_json( { error => { Auth => "Access denied" } } );
+	}
 
 	foreach (@items) {
 		my ( $item_id, $item_type ) = $_ =~ /content_(\d+)_(\d+)/;
@@ -1011,12 +1061,44 @@ sub cmp_by_start_time {
     $job1->start_time cmp $job2->start_time;
 }
 
+# Security pass 2 (Z1): does the current $user have authority over a share TARGET
+# (a user or a group)? Self for users, ownership for groups, or admin.
+sub _has_target_authority {
+    my ( $target_id, $target_type ) = @_;
+    return 0 unless $user && !$user->is_public;
+    return 1 if $user->is_admin;
+    if ( $target_type == $node_types->{user} ) {
+        return ( $user->id == $target_id ? 1 : 0 );
+    }
+    elsif ( $target_type == $node_types->{group} ) {
+        my $grp = $db->resultset('UserGroup')->find($target_id);
+        return 0 unless $grp;
+        my $owner = eval { $grp->owner };
+        return ( $owner && $owner->id == $user->id ? 1 : 0 );
+    }
+    return 0;
+}
+
 sub _check_job_args {
     my %args   = @_;
     my $job_id = $args{job};
 
     if ( not defined($job_id) ) {
         say STDERR "Job.pl: a job id was not given to cancel_job.";
+        return;
+    }
+
+    # Security pass 2 (Z1): previously ANY caller could cancel/restart ANY job. Require a
+    # logged-in user who either owns the job or is an admin. Ownership: the log table maps
+    # a workflow (parent_id) to its user_id.
+    return if !$user || $user->is_public;
+    unless ( $user->is_admin ) {
+        my ($owner_id) = $db->storage->dbh->selectrow_array(
+            'SELECT user_id FROM log WHERE parent_id=? LIMIT 1', undef, $job_id );
+        unless ( defined $owner_id && $owner_id == $user->id ) {
+            say STDERR "Admin.pl: user " . $user->id . " denied cancel/restart of job $job_id";
+            return;
+        }
     }
 
     return $job_id;

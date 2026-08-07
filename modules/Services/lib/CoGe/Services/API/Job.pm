@@ -137,6 +137,26 @@ sub fetch {
         push @tasks, $t;
     }
 
+    # Security pass 2 (Z4): status polling stays public (SynMap3D needs it, which is why
+    # auth was removed here in 2016), but per-task logs can carry command output and file
+    # paths, so expose them only to the job's owner or an admin. Ownership: the log table
+    # maps a workflow (parent_id) to its user_id. Results are already owner-scoped below
+    # via get_workflow_results($user_name, ...).
+    my $is_owner = 0;
+    if ($user && !$user->is_public) {
+        if ($user->is_admin) {
+            $is_owner = 1;
+        }
+        else {
+            my ($owner_id) = $db->storage->dbh->selectrow_array(
+                'SELECT user_id FROM log WHERE parent_id=? LIMIT 1', undef, $id );
+            $is_owner = ( defined $owner_id && $owner_id == $user->id ) ? 1 : 0;
+        }
+    }
+    unless ($is_owner) {
+        $_->{log} = undef for @tasks;   # strip sensitive per-task logs from non-owners
+    }
+
     # Add results
     my $user_name = $user ? ($user->is_admin ? undef : $user->name) : 'public'; # mdb added 8/12/15 - enables admins to see all workflow results
     my $results = get_workflow_results($user_name, $id);

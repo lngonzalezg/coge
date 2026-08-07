@@ -31,12 +31,33 @@ sub _add_features {
     }
 }
 
+# Security pass 2 (Z2): these endpoints authenticated but never authorized -- they
+# returned feature data for any genome id, restricted or not. Reject a restricted genome
+# for a user without access. Returns true if the request may proceed.
+sub _authz_genome {
+    my ($self, $db, $user) = @_;
+    my $gid = $self->stash('gid');
+    my $genome = $db->resultset('Genome')->find($gid);
+    return 1 unless $genome;                       # not found -> let the query return empty
+    return 1 unless $genome->restricted;           # public genome
+    if ($user && !$user->is_public && $user->has_access_to_genome($genome)) {
+        return 1;
+    }
+    $self->render(json => [], status => 401);
+    return 0;
+}
+
 sub features {
     my $self = shift;
     my $name = scalar $self->param('name');
     my $chr = $self->param('chr');
 
-    my ($db, $user) = CoGe::Accessory::Web->init;
+    # Security pass 2 (Z2): use the Mojo-aware auth (as every sibling JBrowse controller
+    # does) so $user is the real authenticated user. The old CoGe::Accessory::Web->init
+    # (CGI) never resolved the request cookie under morbo, which is exactly why this
+    # endpoint "authenticated but never authorized".
+    my ($db, $user) = CoGe::Services::Auth::init($self);
+    return unless _authz_genome($self, $db, $user);
     my $dbh = $db->storage->dbh;
 
 	my $types = $self->param('features');
@@ -78,7 +99,8 @@ sub genes {
         return;
     }
 
-    my ( $db, $user ) = CoGe::Accessory::Web->init;
+    my ( $db, $user ) = CoGe::Services::Auth::init($self);   # security pass 2 (Z2): Mojo-aware auth
+    return unless _authz_genome($self, $db, $user);
     my $dbh = $db->storage->dbh;
 
     my $hits = [];
