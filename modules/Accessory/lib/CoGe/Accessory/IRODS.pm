@@ -33,6 +33,7 @@ use File::Basename qw( basename );
 use File::Spec::Functions qw( catdir catfile );
 use Data::Dumper;
 use IPC::System::Simple qw(capture system $EXITVAL EXIT_ANY);
+use String::ShellQuote qw(shell_quote);
 
 BEGIN {
     use vars qw ($VERSION @ISA @EXPORT @EXPORT_OK $IRODS_METADATA_PREFIX $IRODS_ENV);
@@ -162,8 +163,11 @@ sub irods_iget {
     return unless $env_file;
 
     # Security pass 1 (R4): shell-free execution; keep a display string for no_execute.
+    # The no_execute string is spliced into a JEX shell command by callers, so
+    # every interpolated value must be shell-quoted (§4.3.4 R4-completion).
     my @args = ( 'iget', '-fT', $src, $dest );
-    my $cmd = "export irodsEnvFile='$env_file' && " . join( ' ', @args );
+    my $cmd = 'export irodsEnvFile=' . shell_quote($env_file) . ' && '
+        . shell_quote(@args);
     return $cmd if $no_execute;
     local $ENV{irodsEnvFile} = $env_file;
     my @result = capture( EXIT_ANY, @args );
@@ -183,10 +187,13 @@ sub irods_iput {
     return unless $env_file;
 
     # Security pass 1 (R4): shell-free execution; keep a display string for no_execute.
+    # The no_execute string is spliced into a JEX shell command by callers, so
+    # every interpolated value must be shell-quoted (§4.3.4 R4-completion).
     my @args = ( 'iput', '-T' );
     push @args, '-f' if $overwrite;
     push @args, $src, $dest;
-    my $cmd = "export irodsEnvFile='$env_file' && " . join( ' ', @args );
+    my $cmd = 'export irodsEnvFile=' . shell_quote($env_file) . ' && '
+        . shell_quote(@args);
 
     return $cmd if $no_execute;
     local $ENV{irodsEnvFile} = $env_file;

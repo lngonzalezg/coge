@@ -144,11 +144,12 @@ sub iget {
     #make_path($dest_path) unless (-r $dest_path); # mdb removed 2/9/16 -- for hypnotoad
     
     my $cmd;
-    $cmd .= "mkdir -p $dest_path && "; # mdb added 2/9/16 -- for hypnotoad
+    # §4.3.4 shell-quote user-influenced paths spliced into this JEX command.
+    $cmd .= "mkdir -p " . shell_quote($dest_path) . " && "; # mdb added 2/9/16 -- for hypnotoad
     my $irodsEnvFile = catfile($self->conf->{_HOME_PATH}, 'irodsEnv');
     irods_set_env($irodsEnvFile); # mdb added 2/9/16 -- for hypnotoad, use www-data's irodsEnvFile
     $cmd .= irods_iget( $irods_path, $dest_path, { no_execute => 1 } ) . ' && ';
-    $cmd .= "touch $done_file";
+    $cmd .= "touch " . shell_quote($done_file);
 
     return {
         cmd => $cmd,
@@ -205,7 +206,8 @@ sub untar {
     my $cmd = get_command_path('TAR');
 
     return {
-        cmd => "mkdir -p $output_path && $cmd -xf $input_file --directory $output_path && touch $done_file",
+        # §4.3.4 shell-quote user-influenced paths.
+        cmd => "mkdir -p " . shell_quote($output_path) . " && $cmd -xf " . shell_quote($input_file) . " --directory " . shell_quote($output_path) . " && touch " . shell_quote($done_file),
         args => [],
         inputs => [
             $input_file
@@ -228,7 +230,8 @@ sub unzip {
     my $cmd = get_command_path('unzip');
 
     return {
-        cmd => "mkdir -p $output_path && $cmd $input_file -d $output_path && touch $done_file",
+        # §4.3.4 shell-quote user-influenced paths.
+        cmd => "mkdir -p " . shell_quote($output_path) . " && $cmd " . shell_quote($input_file) . " -d " . shell_quote($output_path) . " && touch " . shell_quote($done_file),
         args => [],
         inputs => [
             $input_file
@@ -251,7 +254,8 @@ sub gunzip {
     my $cmd = get_command_path('GUNZIP');
 
     return {
-        cmd => qq[$cmd -c $input_file > $output_file && touch $output_file.decompressed],
+        # §4.3.4 shell-quote user-influenced paths.
+        cmd => "$cmd -c " . shell_quote($input_file) . " > " . shell_quote($output_file) . " && touch " . shell_quote("$output_file.decompressed"),
         args => [],
         inputs => [
             $input_file
@@ -274,7 +278,8 @@ sub bunzip2 {
     my $cmd = get_command_path('BUNZIP2');
 
     return {
-        cmd => qq[$cmd -c $input_file > $output_file && touch $output_file.decompressed],
+        # §4.3.4 shell-quote user-influenced paths.
+        cmd => "$cmd -c " . shell_quote($input_file) . " > " . shell_quote($output_file) . " && touch " . shell_quote("$output_file.decompressed"),
         args => [],
         inputs => [
             $input_file

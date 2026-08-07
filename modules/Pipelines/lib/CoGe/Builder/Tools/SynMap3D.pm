@@ -5,6 +5,8 @@ extends 'CoGe::Builder::Buildable';
 
 use CoGe::JEX::Jex;
 use CoGe::Builder::Tools::SynMap qw( defaults gen_org_name );
+use CoGe::Accessory::Validate qw(valid_id valid_filename);
+use CoGe::Exception::Generic;
 use File::Spec::Functions;
 
 sub pre_build { # override superclass method
@@ -35,6 +37,9 @@ sub pre_build { # override superclass method
 
 sub build {
 	my $self = shift;
+	# §4.3.4 all merge params below are spliced into the synmerge_3.py shell
+	# command line; validate before use so nothing can inject shell tokens.
+	_sanitize_3d_opts($self->params);
 	my $xid = $self->params->{genome_id1};
 	my $yid = $self->params->{genome_id2};
 	my $zid = $self->params->{genome_id3};
@@ -141,6 +146,42 @@ sub get_name {
     $description .= 'Ks' if $self->params->{ks_type};
     
 	return $description;
+}
+
+# §4.3.4 Validate every SynMap3D merge parameter that is spliced into the
+# synmerge_3.py command line or into an output filename. Fails closed (throws)
+# on any value carrying shell metacharacters.
+sub _sanitize_3d_opts {
+	my $params = shift;
+	my $float_re = qr/^-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?$/;
+
+	for my $k (qw(genome_id1 genome_id2 genome_id3)) {
+		CoGe::Exception::Generic->throw(message => "Invalid $k")
+			unless defined valid_id( $params->{$k} );
+	}
+	# Numeric merge options ( -ml, -ms, -C_eps, -C_ms, -R, -Rmin, -Rmax ).
+	for my $k (qw(min_length min_synteny c_eps c_min ratio r_min r_max)) {
+		next unless defined $params->{$k} && length $params->{$k};
+		next if $k eq 'ratio' && $params->{$k} eq 'false';
+		CoGe::Exception::Generic->throw(message => "Invalid $k")
+			unless $params->{$k} =~ $float_re;
+	}
+	# Token options ( -S sort key, -Rby ratio-by column ).
+	for my $k (qw(sort r_by)) {
+		next unless defined $params->{$k} && length $params->{$k};
+		CoGe::Exception::Generic->throw(message => "Invalid $k")
+			unless $params->{$k} =~ /^[\w.\-]+$/;
+	}
+	# Output filenames ( become catfile() args -> JEX outputs ). The raw value
+	# is used as-is, so require it to already be a clean single-component name
+	# (reject path separators and '..' traversal, not just sanitise them).
+	for my $k (qw(graph_out log_out download)) {
+		next unless defined $params->{$k} && length $params->{$k};
+		my $clean = valid_filename( $params->{$k} );
+		CoGe::Exception::Generic->throw(message => "Invalid $k")
+			unless defined $clean && $clean eq $params->{$k};
+	}
+	return;
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -21,7 +21,21 @@ sub get_name {
 
 sub build {
     my $self = shift;
-    
+
+    # §4.3.4 The params below are splatted into create_gff/bed/tbl, whose args
+    # reach the coge_gff.pl shell command line (and chr is also embedded in the
+    # output filename). Validate before use so none can inject shell tokens.
+    for my $k (qw(cds annos nu upa add_chr id_type)) {
+        my $v = $self->params->{$k};
+        next unless defined $v && length $v;
+        CoGe::Exception::Generic->throw(message => "Invalid $k")
+            unless $v =~ /^\d+$/;
+    }
+    if ( defined $self->params->{chr} && length $self->params->{chr} ) {
+        CoGe::Exception::Generic->throw(message => "Invalid chr")
+            unless $self->params->{chr} =~ /^[\w.\-]+$/;
+    }
+
     my $dest_type = $self->params->{dest_type};
     $dest_type = "http" unless $dest_type;
 
