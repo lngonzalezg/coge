@@ -43,6 +43,48 @@ sub BUILD { # called immediately after constructor
     unless ($PICARD) {
         CoGe::Exception::Generic->throw(message => 'Missing PICARD in config file');
     }
+
+    # §4.3.5 Central guard for tool-tuning parameters. Every analysis/alignment/
+    # trimming builder reads a small sub-hash of numeric/enum knobs (below) and
+    # splices the values into shell command strings or JEX args. None of these
+    # values should ever contain shell metacharacters, so reject any that do,
+    # once, at construction — before any builder gets to build its tasks.
+    $self->_assert_safe_tool_opts();
+}
+
+# Values that reach a shell are numbers or short enum/CSV/flag tokens. Allow
+# word chars plus the punctuation legitimately used by tool options
+# (. , : = / + - space @ tab). Everything else (; | & $ ` ( ) < > \ " ' etc.)
+# is rejected. Note: literal backslash is intentionally disallowed, so SAM read
+# groups must use real tabs rather than "\t" escapes.
+sub _assert_safe_tool_opts {
+    my $self = shift;
+    my $params = $self->params;
+    return unless ref $params eq 'HASH';
+
+    my $safe_re = qr{^[\w.,:=/+\-\@ \t]*$};
+    my $check;
+    $check = sub {
+        my ($val, $group) = @_;
+        if (ref $val eq 'HASH') {
+            $check->($_, $group) for values %$val;
+        }
+        elsif (ref $val eq 'ARRAY') {
+            $check->($_, $group) for @$val;
+        }
+        elsif (defined $val && !ref $val) {
+            CoGe::Exception::Generic->throw(
+                message => "Invalid character in $group parameter"
+            ) unless $val =~ $safe_re;
+        }
+    };
+
+    for my $group (qw(read_params alignment_params trimming_params
+                      methylation_params snp_params expression_params
+                      metaplot_params chipseq_params)) {
+        $check->($params->{$group}, $group) if defined $params->{$group};
+    }
+    return;
 }
 
 # This allows us to instantiate subclasses with a single arg $self.

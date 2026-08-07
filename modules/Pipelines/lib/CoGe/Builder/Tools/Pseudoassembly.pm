@@ -6,6 +6,7 @@ extends 'CoGe::Builder::Buildable';
 use File::Spec::Functions;
 use Digest::MD5 qw(md5_hex);
 use CoGe::Accessory::Web qw(download_url_for);
+use CoGe::Exception::Generic;
 
 sub get_name {
 	my $self = shift;
@@ -17,6 +18,13 @@ sub build {
 
 	my $input = $self->params->{input};
 	my $flip  = $self->params->{flip} // 0;
+
+	# §4.3.5 input reaches an -input arg / JEX file dependency, flip reaches an
+	# -flip arg and the output filename; both must be shell-safe.
+	CoGe::Exception::Generic->throw(message => "Invalid flip")
+		unless $flip =~ /^\d+$/;
+	CoGe::Exception::Generic->throw(message => "Invalid input")
+		unless defined $input && $input =~ m{^[\w./\-]+$} && $input !~ /\.\./;
 
 	my $gid1  = $self->request->genome1->id;
 	my $gid2  = $self->request->genome2->id;
