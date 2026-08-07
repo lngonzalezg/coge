@@ -14,7 +14,7 @@ use CoGe::Core::Genome qw(genomecmp genomecmp2);
 use CoGe::Core::Favorites;
 use CoGeDBI qw(get_feature_counts);
 use CGI;
-use CGI::Carp 'fatalsToBrowser';
+use CGI::Carp; # §7.11 fatalsToBrowser removed -- log, don't leak to browser
 use CGI::Ajax;
 #use DBIxProfiler;
 use Data::Dumper;

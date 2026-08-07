@@ -4,7 +4,7 @@ use AuthCAS;
 use strict;
 use CGI;
 use CGI::Cookie;
-use CGI::Carp 'fatalsToBrowser';
+use CGI::Carp; # §7.11 fatalsToBrowser removed -- log, don't leak to browser
 use HTML::Template;
 use Data::Dumper;
 use CGI::Log;

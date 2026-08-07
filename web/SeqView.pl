@@ -320,9 +320,9 @@ sub get_seq {
     }
     else {
         $fasta = qq{
->Unable to create sequence.  Options:
+>Unable to create sequence.
 };
-        $fasta .= Dumper \%opts;
+        # §7.11 do not dump request options to the client
     }
     return $fasta;
 }

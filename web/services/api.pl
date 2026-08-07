@@ -95,13 +95,14 @@ app->hook( # mdb added 1/9/17
             my $msg = eval { $ex->message };
             $msg = 'Unknown' unless defined $msg;
 
+            # §7.11 Log the stack trace server-side but never return it to the
+            # client (it leaks absolute paths, SQL and internal structure).
             my $trace = (ref($msg) && $msg->can('stack_trace')) ? $msg->stack_trace->as_string : '';
             warn $trace if $trace;
 
             $args->{json} = {
                 error => {
-                    message => "$msg",
-                    trace   => $trace
+                    message => "$msg"
                 }
             };
         }

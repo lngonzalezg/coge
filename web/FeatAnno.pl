@@ -2,7 +2,7 @@
 use strict;
 
 use CGI;
-use CGI::Carp 'fatalsToBrowser';
+use CGI::Carp; # §7.11 fatalsToBrowser removed -- log, don't leak to browser
 use Data::Dumper;
 use DBIxProfiler;
 use Digest::MD5 qw(md5_base64);

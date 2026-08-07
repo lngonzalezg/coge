@@ -1,7 +1,7 @@
 #! /usr/bin/perl -w
 use strict;
 use CGI;
-use CGI::Carp 'fatalsToBrowser';
+use CGI::Carp; # §7.11 fatalsToBrowser removed -- log, don't leak to browser
 use CoGeX;
 use HTML::Template;
 use Data::Dumper;

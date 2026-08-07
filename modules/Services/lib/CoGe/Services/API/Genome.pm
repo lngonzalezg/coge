@@ -353,10 +353,14 @@ sub update {
     return unless $genome;
 
     my $data = $self->req->json;
-    if (exists($data->{metadata}->{id})) {
-	    delete $data->{metadata}->{id};
-    }
-	$genome->update($data->{metadata});
+    # §7.7 Allowlist the client-writable fields. Mass-assigning the raw metadata
+    # let an owner-editor set restricted/deleted/certified (trust badge) and
+    # creator_id (ownership) -- those are power-user/admin/system-managed and go
+    # through their own authorized paths, not this generic update.
+    my %allowed = map { $_ => 1 } qw(name description version link);
+    my %fields  = map { ($_ => $data->{metadata}->{$_}) }
+                  grep { exists $data->{metadata}->{$_} } keys %allowed;
+    $genome->update(\%fields) if %fields;
 	$self->render(json => { success => Mojo::JSON->true });
 }
 

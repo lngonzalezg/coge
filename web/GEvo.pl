@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 use CGI;
-use CGI::Carp 'fatalsToBrowser';
+use CGI::Carp; # §7.11 fatalsToBrowser removed -- log, don't leak to browser
 use CGI::Cookie;
 use CGI::Ajax;
 use URI::Escape;

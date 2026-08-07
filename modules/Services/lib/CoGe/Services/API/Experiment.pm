@@ -210,10 +210,12 @@ sub update {
     return unless $experiment;
 
     my $data = $self->req->json;
-    if (exists($data->{metadata}->{id})) {
-	    delete $data->{metadata}->{id};
-    }
-	$experiment->update($data->{metadata});
+    # §7.7 Allowlist client-writable fields (see Genome::update); never
+    # mass-assign restricted/deleted/creator_id.
+    my %allowed = map { $_ => 1 } qw(name description version link);
+    my %fields  = map { ($_ => $data->{metadata}->{$_}) }
+                  grep { exists $data->{metadata}->{$_} } keys %allowed;
+    $experiment->update(\%fields) if %fields;
 	$self->render(json => { success => Mojo::JSON->true });
 }
 

@@ -5,7 +5,7 @@ use CoGe::Accessory::Web;
 use CoGe::Accessory::genetic_code;
 use CoGe::Accessory::Utils qw( get_link_coords );
 use CGI;
-use CGI::Carp 'fatalsToBrowser';
+use CGI::Carp; # §7.11 fatalsToBrowser removed -- log, don't leak to browser
 use CGI::Ajax;
 use HTML::Template;
 use Data::Dumper;

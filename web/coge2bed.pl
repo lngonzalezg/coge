@@ -4,7 +4,7 @@ use strict;
 use Data::Dumper;
 use CoGeX;
 use CGI;
-use CGI::Carp 'fatalsToBrowser';
+use CGI::Carp; # §7.11 fatalsToBrowser removed -- log, don't leak to browser
 use CoGe::Accessory::Web;
 use File::Path;
 
