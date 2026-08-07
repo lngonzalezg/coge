@@ -1101,7 +1101,10 @@ sub save_settings {
     my $page    = $opts{page};
     my $opts    = $opts{opts};
     my $coge    = $opts{coge};
-    $opts = Dumper $opts unless $opts =~ /VAR1/;
+    # §4.6 Store preferences as JSON, not a Data::Dumper string. load_settings
+    # used to eval() the stored string; JSON is parsed with decode_json and is
+    # never executed as code. Non-ref legacy values are stored unchanged.
+    $opts = encode_json($opts) if ref $opts;
     $user_id = $user->id if ( ref($user) =~ /User/i ) && !$user_id;
 
     unless ($user_id) {
@@ -1145,12 +1148,25 @@ sub load_settings {
       $coge->resultset('WebPreferences')
       ->search( { user_id => $user_id, page => $page } );
     return {} unless $item;
-    my $prefs;
     my $opts = $item->options if $item;
     return {} unless $opts;
-    $opts =~ s/VAR1/prefs/;
-    eval $opts;
-    return $prefs;
+
+    # §4.6 New format: JSON. Parsed, never executed.
+    if ( $opts =~ /^\s*[\[{]/ ) {
+        my $prefs = eval { decode_json($opts) };
+        return ref $prefs ? $prefs : {};
+    }
+
+    # Legacy Data::Dumper string ("$VAR1 = ...;"). This used to be eval()'d
+    # directly, which executed any code embedded in (or injected into) the
+    # stored value. Deserialize it inside a restricted Safe compartment instead
+    # so only data-construction opcodes run -- system/exec/open/backtick are
+    # denied by Safe's default opset.
+    ( my $expr = $opts ) =~ s/^\s*\$VAR1\s*=\s*//;
+    $expr =~ s/;\s*$//;
+    require Safe;
+    my $prefs = Safe->new->reval($expr);
+    return ref $prefs ? $prefs : {};
 }
 
 sub reset_settings {
