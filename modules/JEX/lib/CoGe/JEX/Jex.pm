@@ -88,14 +88,22 @@ sub submit_workflow {
 }
 
 sub wait_for_completion {
-    my ($self, $id) = @_;
+    my ($self, $id, $deadline) = @_;
     # §7.10 Exponential backoff: 1s, then doubling each poll (powers of 2),
     # capped at 900s. The old loop incremented by 0.25 with core sleep(), so the
     # sub-second waits truncated to sleep(0) and busy-looped a CPU while a job
-    # (or an unreachable JEX) stayed pending. Backing off also stops a stalled
-    # job from polling JEX tightly forever.
+    # (or an unreachable JEX) stayed pending.
+    #
+    # §7.10.2 Hard wall-clock deadline (default 3h, overridable per call): a
+    # synchronous caller (e.g. GenomeInfo.pl's export/annotate handlers) parks an
+    # mpm_event worker for the whole wait, so without a cap a stuck or very slow
+    # job pins that worker indefinitely. On timeout we return 0 (treated as "not
+    # completed") rather than hang. The default is generous so it does not fail a
+    # legitimate slow job (e.g. TransDecoder annotation); tune per caller if needed.
+    $deadline = 10800 unless defined $deadline && $deadline > 0;
     my $MAX_WAIT = 900;
     my ($status, $wait) = (undef, 1);
+    my $start = time;
 
     while (1) {
         $status = get_status($self, $id);
@@ -107,6 +115,10 @@ sub wait_for_completion {
             case /terminated/i { return 0; }
             case /error/i      { return 0; }
             else {
+                if ((time - $start) >= $deadline) {
+                    warn "wait_for_completion: deadline ${deadline}s exceeded for workflow $id\n";
+                    return 0;
+                }
                 sleep $wait;
                 $wait *= 2;
                 $wait = $MAX_WAIT if $wait > $MAX_WAIT;
