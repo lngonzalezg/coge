@@ -122,6 +122,14 @@ sub info_cmp {
 	$info_a cmp $info_b;
 }
 
+# Security pass 1 (S1): only these key::value fields are honoured. Previously any
+# key::value token became a query field, giving an attacker control over hash keys the
+# downstream code trusts. An unknown key is treated as a plain search term instead.
+my %ALLOWED_QUERY_KEYS = map { $_ => 1 } qw(
+	type feature_type tag certified deleted favorite restricted
+	metadata_key metadata_value role
+);
+
 sub parse_query {
 	my $search_text = shift;
 	my $query = {};
@@ -129,7 +137,7 @@ sub parse_query {
 	foreach (parse_line('\s+', 0, $search_text)) {
 		next if !$_;
 		my $index = index($_, '::');
-		if ($index != -1) {
+		if ($index != -1 && $ALLOWED_QUERY_KEYS{ substr($_, 0, $index) }) {
 			$query->{substr($_, 0, $index)} = substr($_, $index + 2);
 		}
 		else {
@@ -236,7 +244,19 @@ sub search {
 		my $feature_type = $query->{'feature_type'};
 
 		#FIXME move literal query into CoGeDBI, mdb 12/22/16
-		my $sql = 'SELECT feature_name.name,feature.feature_id,' . ($feature_type ? "'" . $feature_type . "'" : 'feature_type.name') . ',organism.name,data_source.name,genome.version,genomic_sequence_type.name ' .
+		# Security pass 1 (S1): this hand-written query concatenated $feature_type and the
+		# joined search_terms into single-quoted SQL literals (unauthenticated SQLi), and a
+		# UNION/comment injection could also strip the `AND !genome.restricted` access filter
+		# since it was part of the same string. Now every user value is bound via a
+		# placeholder; only structural SQL (join shape, the restricted filter) is literal, so
+		# it cannot be commented out.
+		my @bind;
+		my $ft_col = 'feature_type.name';
+		if (defined $feature_type) {
+			$ft_col = '?';
+			push @bind, $feature_type;   # shown as the feature_type column
+		}
+		my $sql = 'SELECT feature_name.name,feature.feature_id,' . $ft_col . ',organism.name,data_source.name,genome.version,genomic_sequence_type.name ' .
 			'FROM feature_name ' .
 				'JOIN feature USING(feature_id) ';
 		$sql .= 'JOIN feature_type USING(feature_type_id) ' unless $feature_type;
@@ -247,13 +267,15 @@ sub search {
 		$sql .= 'AND !genome.restricted ' if !$user || $user->is_public;
 		$sql .= 'JOIN organism USING(organism_id) ' .
 				'JOIN genomic_sequence_type USING(genomic_sequence_type_id) ' .
-			'WHERE MATCH(feature_name.name) AGAINST (\'' . (join ',', @{$query->{'search_terms'}}) . '\') ';
+			'WHERE MATCH(feature_name.name) AGAINST (?) ';
+		push @bind, (join ',', @{$query->{'search_terms'}});
 		if ($feature_type) {
-			my @row = $dbh->selectrow_array('SELECT feature_type_id FROM feature_type WHERE name=\'' . $feature_type . '\'');
-			$sql .= 'AND feature.feature_type_id=' . $row[0] . ' ';
+			my @row = $dbh->selectrow_array('SELECT feature_type_id FROM feature_type WHERE name=?', undef, $feature_type);
+			$sql .= 'AND feature.feature_type_id=? ';
+			push @bind, $row[0];   # integer from DB; bound, never interpolated
 		}
 		$sql .= 'GROUP BY feature_name.name,feature.feature_id';
-		my $rows = $dbh->selectall_arrayref($sql);
+		my $rows = $dbh->selectall_arrayref($sql, undef, @bind);
 
 		foreach (@$rows) { #TODO use fetchall_hashref and map for performance improvement, mdb 12/22/16
 			push @results, {

@@ -53,12 +53,16 @@ BEGIN {
     );
 }
 
-# takes: string of comma delimeted, singled quoted feature type names
-# returns: string of comma delimited corresponding feature type ids
+# Security pass 1 (S4): contract changed to fail closed. Was "string of comma-delimited,
+# single-quoted names" concatenated into IN(...) -- no caller quoted, giving SQLi.
+# takes: arrayref of feature type names
+# returns: arrayref of corresponding integer feature type ids
 sub feature_type_names_to_id {
-	my $type_names = shift;
+	my $type_names = shift;   # arrayref
 	my $dbh = shift;
-	return join(',', @{$dbh->selectcol_arrayref('SELECT feature_type_id FROM feature_type WHERE name IN(' . $type_names . ')')});
+	return [] unless $type_names && ref($type_names) eq 'ARRAY' && @$type_names;
+	my $ph = join(',', ('?') x scalar @$type_names);
+	return $dbh->selectcol_arrayref('SELECT feature_type_id FROM feature_type WHERE name IN(' . $ph . ')', undef, @$type_names);
 }
 
 sub get_table {
@@ -69,7 +73,25 @@ sub get_table {
     my $operator_hash = shift; #hash ref of the comparison operators to be used, with the conditions as keys
     $hash_fields = [$table.'_id'] unless $hash_fields;
      my $operator_string = "=" unless $operator_hash;
-    
+
+    # Security pass 1 (S6): this general-purpose builder interpolates the table name,
+    # the condition column names, and the comparison operators. All current callers pass
+    # hard-coded constants, but to keep it from becoming an injection sink if a future
+    # caller ever passes request data, constrain the identifiers and operators here.
+    # (Condition VALUES are still interpolated as before -- callers pass pre-quoted
+    # literals -- so values passed to this routine MUST remain trusted/pre-quoted, never
+    # request-derived.)
+    die "get_table: invalid table name '$table'" unless defined $table && $table =~ /^\w+$/;
+    my %ALLOWED_OP = map { $_ => 1 } ('=', '!=', '<>', '<', '>', '<=', '>=', ' like ', ' LIKE ', 'like', 'LIKE');
+    for my $k (keys %{ $conditions || {} }) {
+        die "get_table: invalid condition column '$k'" unless $k =~ /^\w+$/;
+    }
+    if ($operator_hash) {
+        for my $k (keys %$operator_hash) {
+            die "get_table: invalid operator '$operator_hash->{$k}'" unless $ALLOWED_OP{ $operator_hash->{$k} };
+        }
+    }
+
     # Build query string
     my $query = "SELECT * FROM $table";
     if ($operator_hash) {
@@ -723,7 +745,9 @@ sub get_datasets {
 sub get_dataset_ids {
 	my $gid = shift;
 	my $dbh = shift;
-	$dbh->selectcol_arrayref('SELECT dataset_id FROM dataset_connector WHERE genome_id=' . $gid);
+	# Security pass 1 (S6): bind $gid -- it reaches here unvalidated from request params
+	# (JBrowse/Search _get_data).
+	$dbh->selectcol_arrayref('SELECT dataset_id FROM dataset_connector WHERE genome_id=?', undef, $gid);
 }
 
 # doesn't seem to be used anywhere

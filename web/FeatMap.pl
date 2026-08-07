@@ -254,7 +254,7 @@ sub generate_chromosome_images {
                 my $map_file = $cogeweb->basefile . "_$count.map";
                 ( $x, $map_file ) =
                   CoGe::Accessory::Web::check_taint($map_file);
-                open( MAP, ">$map_file" );
+                open( MAP, ">", "$map_file" );
                 print MAP $image_map;
                 close MAP;
             }
@@ -292,7 +292,7 @@ sub generate_chromosome_images {
 sub get_map {
     my $file = shift;
     my $map;
-    open( IN, $file ) || die "$!";
+    open( IN, "<", $file ) || die "$!";
     while (<IN>) {
         $map .= $_;
     }

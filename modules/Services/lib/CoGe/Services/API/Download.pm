@@ -11,6 +11,7 @@ use Data::Dumper;
 use CoGe::Services::Auth qw(init);
 use CoGe::Services::Error;
 use CoGe::Core::Storage qw(get_download_path get_genome_cache_path get_experiment_cache_path get_workflow_log_file);
+use CoGe::Accessory::Validate qw(valid_filename);
 
 sub get {
     my $self = shift;
@@ -28,6 +29,17 @@ sub get {
     
     # Authenticate user and connect to the database
     my ($db, $user) = CoGe::Services::Auth::init($self);
+
+    # Security pass 1 (F1): $filename was joined into a cache path with no containment
+    # check, so ?filename=../../../../opt/apache2/coge/coge.conf read arbitrary files
+    # (DB creds, JWT secret, /etc/passwd) with only a public-genome id as the gate.
+    # Reduce to a single safe path component up front; every branch below uses it, so
+    # catdir(<cache dir>, $filename) can no longer escape the cache directory.
+    if (defined $filename && length $filename) {
+        my $safe = valid_filename($filename);
+        return $self->render(API_STATUS_BAD_REQUEST) unless defined $safe;
+        $filename = $safe;
+    }
 
     # Determine path to file
     my $file_path = '';

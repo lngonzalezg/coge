@@ -412,7 +412,7 @@ sub read_file {
         warn "unable to read file $file for feature ids\n";
         return \@featlist;
     }
-    open( IN, $file ) || die "can't open $file for reading: $!";
+    open( IN, "<", $file ) || die "can't open $file for reading: $!";
     while (<IN>) {
         chomp;
         push @featlist, $_;

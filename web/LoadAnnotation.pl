@@ -8,6 +8,7 @@ use CoGeX;
 use CoGe::Accessory::Web;
 use CoGe::Accessory::Utils;
 use CoGe::Core::Storage qw(get_workflow_paths get_upload_path);
+use CoGe::Accessory::Validate qw(valid_filename);
 use HTML::Template;
 use JSON::XS;
 use URI::Escape::JavaScript qw(escape unescape);
@@ -145,14 +146,22 @@ sub generate_body {
 
 sub upload_file {
     my %opts      = @_;
-    my $filename  = '' . $FORM->param('input_upload_file');
+    my $orig      = '' . $FORM->param('input_upload_file'); # client-supplied name
     my $fh        = $FORM->upload('input_upload_file');
-    #print STDERR "upload_file: $filename\n";
+    #print STDERR "upload_file: $orig\n";
+
+    # Security pass 1 (F2): reduce the attacker-controlled upload filename to a safe
+    # single component before using it in a write path; look up tmpFileName by the
+    # original submitted name. See LoadExperiment.pl for the full rationale.
+    my $filename = valid_filename($orig);
 
     my $size = 0;
     my $path;
     if ($fh) {
-        my $tmpfilename = $FORM->tmpFileName( $FORM->param('input_upload_file') );
+        unless (defined $filename && defined $TEMPDIR) {
+            return encode_json({ error => 'invalid filename or load_id', filename => undef, path => undef, size => 0 });
+        }
+        my $tmpfilename = $FORM->tmpFileName( $orig );
         $path = catfile('upload', $filename);
         my $targetpath = catdir($TEMPDIR, 'upload');
         mkpath($targetpath);

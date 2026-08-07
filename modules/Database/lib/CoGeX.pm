@@ -358,8 +358,12 @@ sub log_user {
     }
 
     #FIRST REMOVE ALL ENTRIES FOR THIS USER
+    # Security pass 1 (A2): dedup by user_id, not by session value. The old search on
+    # {session => $session} only ever matched because ids were the deterministic
+    # md5(user+ip); with random ids it would never collide, so stale rows would
+    # accumulate forever. Keying on user_id gives single-session-per-user behaviour.
     foreach my $item (
-        $self->resultset('UserSession')->search( { session => $session } ) )
+        $self->resultset('UserSession')->search( { user_id => $uid } ) )
     {
         next unless $item;
         $item->delete;

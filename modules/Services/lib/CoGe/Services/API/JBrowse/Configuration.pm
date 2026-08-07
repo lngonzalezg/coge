@@ -57,8 +57,16 @@ sub refseq_config {
 
 sub _annotations {
     my ($type, $eid, $db) = @_;
-    my $sth = $db->storage->dbh->prepare('SELECT name,annotation FROM ' . $type . '_annotation JOIN annotation_type ON annotation_type.annotation_type_id=' . $type . '_annotation.annotation_type_id WHERE ' . $type . '_id=' . $eid . ' ORDER BY name');
-    $sth->execute();
+    # Security pass 1 (S5): $type is a SQL identifier (table/column prefix) so it cannot
+    # be a placeholder -- allowlist it against the known set and fail closed. $eid is
+    # bound.
+    my %ok = map { $_ => 1 } qw(experiment genome list);
+    unless ($type && $ok{$type}) {
+        warn "Configuration::_annotations: rejected type '" . (defined $type ? $type : '(undef)') . "'\n";
+        return (undef, undef);
+    }
+    my $sth = $db->storage->dbh->prepare('SELECT name,annotation FROM ' . $type . '_annotation JOIN annotation_type ON annotation_type.annotation_type_id=' . $type . '_annotation.annotation_type_id WHERE ' . $type . '_id=? ORDER BY name');
+    $sth->execute($eid);
     my $annotations;
     my $jbrowse_config;
     while (my $row = $sth->fetch) {

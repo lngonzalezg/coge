@@ -310,7 +310,7 @@ sub read_file {
         warn "unable to read file $file for feature ids\n";
         return \@featlist;
     }
-    open( IN, $file ) || die "can't open $file for reading: $!";
+    open( IN, "<", $file ) || die "can't open $file for reading: $!";
     while (<IN>) {
         chomp;
         push @featlist, $_;
@@ -462,7 +462,7 @@ sub send_to_csv {    # FIXME mdb
     $cogeweb = CoGe::Accessory::Web::initialize_basefile( tempdir => $TEMPDIR );
     my $basename = $cogeweb->basefilename;
     my $file     = "$TEMPDIR/$basename.csv";
-    open( OUT, ">$file" );
+    open( OUT, ">", "$file" );
     print OUT join( "\t",
         "CoGe Genome ID",
         "Name",

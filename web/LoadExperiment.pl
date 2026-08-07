@@ -20,6 +20,7 @@ use CoGe::Accessory::TDS;
 use CoGe::Accessory::Utils;
 use CoGe::Core::Genome qw(genomecmp);
 use CoGe::Core::Storage qw(get_workflow_paths get_upload_path);
+use CoGe::Accessory::Validate qw(valid_filename);
 
 no warnings 'redefine';
 
@@ -141,15 +142,25 @@ sub generate_body {
 
 sub upload_file {
     my %opts      = @_;
-    my $filename  = '' . $FORM->param('input_upload_file');
+    my $orig      = '' . $FORM->param('input_upload_file'); # client-supplied name
     my $fh        = $FORM->upload('input_upload_file');
 
-    #	print STDERR "upload_file: $filename\n";
+    #	print STDERR "upload_file: $orig\n";
+
+    # Security pass 1 (F2): the client filename was used verbatim to build the write
+    # path (Content-Disposition is fully attacker-controlled), so a traversing name wrote
+    # anywhere www-data could reach. Reduce to a safe single component for all path use;
+    # tmpFileName() must still be looked up by the ORIGINAL submitted name. $TEMPDIR
+    # derives from load_id via get_upload_path, which now rejects bad load_ids (undef).
+    my $filename = valid_filename($orig);
 
     my $size = 0;
     my $path;
     if ($fh) {
-        my $tmpfilename = $FORM->tmpFileName( $filename );
+        unless (defined $filename && defined $TEMPDIR) {
+            return encode_json({ error => 'invalid filename or load_id', filename => undef, path => undef, size => 0 });
+        }
+        my $tmpfilename = $FORM->tmpFileName( $orig );
         $path = catfile('upload', $filename);
         my $targetpath = catdir($TEMPDIR, 'upload');
         mkpath($targetpath);

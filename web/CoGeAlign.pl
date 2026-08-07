@@ -230,7 +230,7 @@ sub read_file {
         warn "unable to read file $file for feature ids\n";
         return \@featlist;
     }
-    open( IN, $file ) || die "can't open $file for reading: $!";
+    open( IN, "<", $file ) || die "can't open $file for reading: $!";
     while (<IN>) {
         chomp;
         push @featlist, $_;
@@ -266,7 +266,7 @@ sub run {
 ##Check to make sure no spaces in fasta header
     # $inseqs =~ s/\s+/_/g;
 
-    open( NEW, "> $seq_file" );
+    open( NEW, ">", "$seq_file" );
     print NEW $inseqs;
     close NEW;
     my $suffix = $format =~ /(jalview|clustal)/ ? 'aln' : $file_format{$format};
@@ -302,7 +302,7 @@ sub run {
 
     my $output;
 
-    open( IN, $outfile ) || die "$! can't open $outfile for reading";
+    open( IN, "<", $outfile ) || die "$! can't open $outfile for reading";
     while (<IN>) {
 
         $output .= $_;
@@ -918,7 +918,7 @@ sub convert_phylip_names {
         $names{$id} = $item;
     }
     my $output;
-    open( IN, $file ) || warn "Can't open $file for reading: $!";
+    open( IN, "<", $file ) || warn "Can't open $file for reading: $!";
     while (<IN>) {
         $output .= $_;
     }
@@ -926,7 +926,7 @@ sub convert_phylip_names {
     while ( my ( $k, $v ) = each %names ) {
         $output =~ s/$k/$v/xsg;
     }
-    open( OUT, ">" . $file );
+    open( OUT, ">", $file );
     print OUT $output;
     close OUT;
     return \%names;

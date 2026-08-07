@@ -59,7 +59,12 @@ sub init {
         if ($session_id) {
             #print STDERR "session_id: ", $session_id, "\n";
             $session_id =~ s/session&//;
-            my $session = $db->resultset('UserSession')->find( { session => $session_id } );
+            # Security pass 1 (A2): enforce the 7-day server-side expiry against the
+            # existing `date` column (matches the +7d cookie lifetime).
+            my ($session) = $db->resultset('UserSession')->search({
+                session => $session_id,
+                date    => { '>' => \"DATE_SUB(NOW(), INTERVAL 7 DAY)" },
+            })->first;
             if ($session) {# && $user && $session->user_id == $user->id) { # mdb changed 3/7/16 for hypnotoad
                 $user = $db->resultset('User')->find($session->user_id); # mdb added 3/7/16 for hypnotoad
 #                print STDERR "CoGe::Services::Auth::init using existing session for user '", $user->name, "'\n";
@@ -67,7 +72,17 @@ sub init {
        			    my $user_id = $self->cookie('user_id');
         			if ($user_id) {
             			my $u = $db->resultset('User')->find($user_id);
-            			$user = $u if $u;
+            			# Security pass 1 (A3): admin impersonation via the unsigned
+            			# user_id cookie is retained as a support tool but is now
+            			# AUDITED -- previously it left no trace. Record acting admin
+            			# and target so the action is attributable. (Session rotation at
+            			# this privilege transition is handled with the A2 session work.)
+            			if ($u) {
+            			    print STDERR sprintf(
+            			        "CoGe::Services::Auth::init: IMPERSONATION admin '%s' (id %s) -> user '%s' (id %s)\n",
+            			        $user->user_name, $user->id, $u->user_name, $u->id);
+            			    $user = $u;
+            			}
         			}
     			}
                 return ( $db, $user, $conf );

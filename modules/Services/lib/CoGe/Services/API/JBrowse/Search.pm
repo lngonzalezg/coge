@@ -6,6 +6,7 @@ use CoGe::Core::Experiment;
 use CoGe::Core::Storage qw( $DATA_TYPE_QUANT $DATA_TYPE_POLY $DATA_TYPE_ALIGN $DATA_TYPE_MARKER get_experiment_path get_upload_path );
 use CoGe::Services::Auth;
 use CoGe::Services::Error;
+use CoGe::Accessory::Validate qw(valid_filename);
 use CoGeDBI qw( get_dataset_ids feature_type_names_to_id );
 use File::Path qw( mkpath );
 use File::Spec::Functions qw( catdir catfile );
@@ -55,6 +56,18 @@ sub data {
     my $irods_path = $self->param('irods_path');
     my $load_id = $self->param('load_id');
     my $gap_max = $self->param('gap_max');
+
+    # Security pass 1 (R2): load_id flows into a filesystem path and (for alignments)
+    # into a command. Require a single safe path component; reject an invalid one
+    # outright rather than letting it traverse or reach a shell.
+    if (defined $load_id && length $load_id) {
+        my $safe = valid_filename($load_id);
+        unless (defined $safe && $safe eq $load_id) {
+            $self->render(API_STATUS_BAD_REQUEST);
+            return;
+        }
+        $load_id = $safe;
+    }
 
     # Authenticate user and connect to the database
     my ($db, $user, $conf) = CoGe::Services::Auth::init($self);
@@ -274,9 +287,30 @@ sub data {
             irods_iput($tempfile, $irods_path . '/' . $filename);
         }
         elsif ($load_id && $exp_data_type == $DATA_TYPE_ALIGN) {
-                my $cmd = $conf->{SAMTOOLS} || 'samtools';
-                $cmd .= ' view -bS ' . catfile($path, 'search_results.sam') . ' > ' . catfile($path, 'search_results.bam');
-                system($cmd);
+                # Security pass 1 (R2): was a single shell string with a '>' redirect --
+                # system("samtools view -bS <path>/search_results.sam > <path>/search_results.bam")
+                # -- so $path (derived from load_id) reached /bin/sh. Now shell-free:
+                # list-form exec via a 3+ arg piped open, output written to the .bam in Perl.
+                my $samtools = $conf->{SAMTOOLS} || 'samtools';
+                my $sam = catfile($path, 'search_results.sam');
+                my $bam = catfile($path, 'search_results.bam');
+                if (open(my $bam_fh, '>', $bam)) {
+                    binmode $bam_fh;
+                    if (my $pid = open(my $cout, '-|', $samtools, 'view', '-bS', $sam)) {
+                        binmode $cout;
+                        local $/;
+                        my $data = <$cout>;
+                        print $bam_fh $data if defined $data;
+                        close $cout;
+                    }
+                    else {
+                        warn "Search: cannot exec samtools: $!";
+                    }
+                    close $bam_fh;
+                }
+                else {
+                    warn "Search: cannot open $bam for write: $!";
+                }
         }
     }
 }
@@ -297,16 +331,38 @@ sub _get_data {
 sub _get_db_data {
 	my ($gid, $type_names, $chr, $dbh) = @_;
 
+	# Security pass 1 (S4): $chr and the feature-type names were concatenated into the
+	# query; $gid reached get_dataset_ids unvalidated. Everything is bound now. The
+	# dataset ids and feature_type ids are DB-derived integers but are still bound via
+	# placeholders rather than interpolated.
+	my @bind;
 	my $query = 'SELECT start,stop';
 	$query .= ',chromosome' unless $chr;
 	$query .= ' FROM feature WHERE dataset_id';
 	my $ids = get_dataset_ids($gid, $dbh);
-	$query .= (scalar @$ids == 1) ? '=' . $ids->[0] : ' IN(' . join(',', @$ids) . ')';
-	$query .= " AND chromosome='" . $chr . "'" if $chr;
+	$ids ||= [];
+	if (scalar @$ids == 1) {
+		$query .= '=?';
+		push @bind, $ids->[0];
+	}
+	else {
+		$query .= ' IN(' . join(',', ('?') x scalar @$ids) . ')';
+		push @bind, @$ids;
+	}
+	if ($chr) {
+		$query .= " AND chromosome=?";
+		push @bind, $chr;
+	}
 	if ($type_names && $type_names ne 'all') {
-		my $type_ids = feature_type_names_to_id($type_names, $dbh);
-		$query .= ' AND feature_type_id';
-		$query .= (index($type_ids, ',') == -1) ? '=' . $type_ids : ' IN(' . $type_ids . ')';
+		my @names = grep { length } map { my $t = $_; $t =~ s/^\s*['"]?//; $t =~ s/['"]?\s*$//; $t } split(/,/, $type_names);
+		my $type_ids = feature_type_names_to_id(\@names, $dbh);   # arrayref of ints
+		if ($type_ids && @$type_ids) {
+			$query .= ' AND feature_type_id IN(' . join(',', ('?') x scalar @$type_ids) . ')';
+			push @bind, @$type_ids;
+		}
+		else {
+			$query .= ' AND feature_type_id!=4'; # no matching type names
+		}
 	} else {
         $query .= ' AND feature_type_id!=4'; # ignore chromosomes
     }
@@ -314,7 +370,7 @@ sub _get_db_data {
 	$query .= 'chromosome,' unless $chr;
 	$query .= 'start,stop';
 	my $sth = $dbh->prepare($query);
-	$sth->execute();
+	$sth->execute(@bind);
 	return {
 		sth => $sth,
 		line => sub {

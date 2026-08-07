@@ -8,6 +8,7 @@ use CoGeX;
 use CoGe::Accessory::Web;
 use CoGe::Accessory::Utils;
 use CoGe::Core::Storage qw(get_workflow_paths get_upload_path);
+use CoGe::Accessory::Validate qw(valid_filename);
 use HTML::Template;
 use LWP::Simple qw(get);
 use XML::Simple qw(XMLin);
@@ -179,15 +180,21 @@ sub search_ncbi_nucleotide { #TODO this can be done client-side instead, see Ent
 
 sub upload_file {
     my %opts      = @_;
-    my $upload_file = $FORM->param('input_upload_file');
-    my $filename  = '' . $upload_file;
-    my $fh        = $FORM->upload('input_upload_file');
+    my $upload_file = $FORM->param('input_upload_file'); # client-supplied name
+    #   print STDERR "upload_file: $upload_file\n";
 
-    #   print STDERR "upload_file: $filename\n";
+    # Security pass 1 (F2): reduce the attacker-controlled upload filename to a safe
+    # single component; look up tmpFileName by the original submitted name. See
+    # LoadExperiment.pl for the full rationale.
+    my $filename = valid_filename('' . $upload_file);
+    my $fh        = $FORM->upload('input_upload_file');
 
     my $size = 0;
     my $path;
     if ($fh) {
+        unless (defined $filename && defined $TEMPDIR) {
+            return encode_json({ error => 'invalid filename or load_id', filename => undef, path => undef, size => 0 });
+        }
         my $tmpfilename = $FORM->tmpFileName( $upload_file );
         $path = catfile('upload', $filename);
         my $targetpath = catdir($TEMPDIR, 'upload');

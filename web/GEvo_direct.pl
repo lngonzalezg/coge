@@ -9,7 +9,9 @@ use HTML::Template;
 use Digest::MD5 qw(md5_base64);
 use DBI;
 use File::Path;
+use File::Spec;
 use CoGe::Accessory::Web;
+use CoGe::Accessory::Validate qw(valid_filename);
 no warnings 'redefine';
 
 delete @ENV{ 'IFS', 'CDPATH', 'ENV', 'BASH_ENV' };
@@ -69,43 +71,47 @@ sub gen_body {
     my %files;
     my $tiny;
 
-    open( CMD, "/bin/ls $TEMPDIR/$name" . "* |" );
-    while (<CMD>) {
-        my $touch = "/usr/bin/touch $_";
-        my $x;
-        ( $x, $touch ) = CoGe::Accessory::Web::check_taint($touch);
-        `$touch`;
-        foreach ( split /\n/ ) {
-            if (/\.anno/) {
-                push @{ $files{anno} }, $_;
+    # Security pass 1 (F4): was open(CMD, "/bin/ls $TEMPDIR/$name* |") -- a piped 2-arg
+    # open with the request param $name interpolated (command injection), then a shell
+    # `touch` per result line. Now: validate $name to a safe prefix, list matching files
+    # with readdir (no shell), and refresh mtimes with utime instead of shelling out.
+    my $safe_name = valid_filename($name);
+    if ( defined $safe_name && opendir( my $dh, $TEMPDIR ) ) {
+        my @entries = grep { index( $_, $safe_name ) == 0 } readdir($dh);
+        closedir $dh;
+        foreach my $entry (@entries) {
+            my $full = File::Spec->catfile( $TEMPDIR, $entry );
+            next unless -f $full;
+            utime( undef, undef, $full );    # refresh mtime (replaces `touch`)
+            if ( $full =~ /\.anno/ ) {
+                push @{ $files{anno} }, $full;
             }
-            elsif (/\.faa/) {
-                push @{ $files{faa} }, $_;
+            elsif ( $full =~ /\.faa/ ) {
+                push @{ $files{faa} }, $full;
             }
-            elsif (/\.png/) {
-                push @{ $files{png} }, $_;
+            elsif ( $full =~ /\.png/ ) {
+                push @{ $files{png} }, $full;
             }
-            elsif (/\.log/) {
-                open( IN, $_ );
-                while ( my $line = <IN> ) {
-                    if ( $line =~ /tiny url: (.*)/i ) {
-                        $tiny = $1;
-                        last;
+            elsif ( $full =~ /\.log/ ) {
+                if ( open( my $in, '<', $full ) ) {
+                    while ( my $line = <$in> ) {
+                        if ( $line =~ /tiny url: (.*)/i ) {
+                            $tiny = $1;
+                            last;
+                        }
                     }
+                    close $in;
                 }
-                close IN;
-
-                push @{ $files{log} }, $_;
+                push @{ $files{log} }, $full;
             }
-            elsif (/\.sqlite/) {
-                push @{ $files{sqlite} }, $_;
+            elsif ( $full =~ /\.sqlite/ ) {
+                push @{ $files{sqlite} }, $full;
             }
             else {
-                push @{ $files{report} }, $_;
+                push @{ $files{report} }, $full;
             }
         }
     }
-    close CMD;
 
     #print STDERR Dumper \%files;
     my $h       = 0;

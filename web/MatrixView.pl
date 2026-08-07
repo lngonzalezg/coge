@@ -234,7 +234,7 @@ sub process_file {
     my @head;
     my $max = 0;
     my $min = 10000;
-    open( IN, $file );
+    open( IN, "<", $file );
 
     while (<IN>) {
         chomp;

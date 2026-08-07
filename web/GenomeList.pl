@@ -4,6 +4,7 @@ use strict;
 
 use CoGeX;
 use CoGe::Accessory::Web;
+use CoGe::Accessory::Validate qw(valid_filename);
 use CoGe::Accessory::Utils qw( commify );
 use CoGe::Core::Genome qw( calc_gc get_stats has_statistic );
 use CoGe::Core::Storage qw(get_genome_file get_genome_path);
@@ -172,9 +173,10 @@ sub cds_wgc_hist {
     close FILE;
 
     my $file = $TEMPDIR . "/" . join( "_", @dsids );    #."_wobble_gc.txt";
-    ($min) = $min =~ /(.*)/ if defined $min;
-    ($max) = $max =~ /(.*)/ if defined $max;
-    ($chr) = $chr =~ /(.*)/ if defined $chr;
+    # Security pass 1 (R1): replaced taint-laundering no-ops with real validation.
+    $min = ($min =~ /^(-?\d+(?:\.\d+)?)$/ ? $1 : undef) if defined $min;
+    $max = ($max =~ /^(-?\d+(?:\.\d+)?)$/ ? $1 : undef) if defined $max;
+    $chr = valid_filename($chr) if defined $chr;
     $file .= "_" . $chr . "_" if defined $chr;
     $file .= "_min" . $min    if defined $min;
     $file .= "_max" . $max    if defined $max;
@@ -183,18 +185,12 @@ sub cds_wgc_hist {
     my $out = $file;
     $out =~ s/txt$/png/;
     unless ( -r $out ) {
-        open( OUT, ">" . $file );
+        open( OUT, ">", $file );
         print OUT "#wobble gc for dataset ids: " . join( " ", @dsids ), "\n";
         print OUT join( "\n", @data ), "\n";
         close OUT;
-        my $cmd = $HISTOGRAM;
-        $cmd .= " -f $file";
-        $cmd .= " -o $out";
-        $cmd .= " -t \"CDS wobble gc content\"";
-        $cmd .= " -min 0";
-        $cmd .= " -max 100";
-        $cmd .= " -ht $hist_type" if $hist_type;
-        `$cmd`;
+        CoGe::Accessory::Web::run_histogram( bin => $HISTOGRAM, file => $file, out => $out,
+            title => "CDS wobble gc content", min => 0, max => 100, hist_type => $hist_type );
     }
     $min = 0   unless defined $min && $min =~ /\d+/;
     $max = 100 unless defined $max && $max =~ /\d+/;
@@ -358,9 +354,10 @@ sub get_gc_for_feature_type {
     my $file = $TEMPDIR . "/" . join( "_", @dsids );
 
     #perl -T flag
-    ($min) = $min =~ /(.*)/ if defined $min;
-    ($max) = $max =~ /(.*)/ if defined $max;
-    ($chr) = $chr =~ /(.*)/ if defined $chr;
+    # Security pass 1 (R1): replaced taint-laundering no-ops with real validation.
+    $min = ($min =~ /^(-?\d+(?:\.\d+)?)$/ ? $1 : undef) if defined $min;
+    $max = ($max =~ /^(-?\d+(?:\.\d+)?)$/ ? $1 : undef) if defined $max;
+    $chr = valid_filename($chr) if defined $chr;
     $file .= "_" . $chr . "_" if defined $chr;
     $file .= "_min" . $min    if defined $min;
     $file .= "_max" . $max    if defined $max;
@@ -369,18 +366,12 @@ sub get_gc_for_feature_type {
     my $out = $file;
     $out =~ s/txt$/png/;
     unless ( -r $out ) {
-        open( OUT, ">" . $file );
+        open( OUT, ">", $file );
         print OUT "#wobble gc for dataset ids: " . join( " ", @dsids ), "\n";
         print OUT join( "\n", @data ), "\n";
         close OUT;
-        my $cmd = $HISTOGRAM;
-        $cmd .= " -f $file";
-        $cmd .= " -o $out";
-        $cmd .= " -t \"" . $type->name . " gc content\"";
-        $cmd .= " -min 0";
-        $cmd .= " -max 100";
-        $cmd .= " -ht $hist_type" if $hist_type;
-        `$cmd`;
+        CoGe::Accessory::Web::run_histogram( bin => $HISTOGRAM, file => $file, out => $out,
+            title => $type->name . " gc content", min => 0, max => 100, hist_type => $hist_type );
     }
     $min = 0   unless defined $min && $min =~ /\d+/;
     $max = 100 unless defined $max && $max =~ /\d+/;
@@ -733,7 +724,7 @@ sub read_file {
         warn "unable to read file $file for feature ids\n";
         return \@featlist;
     }
-    open( IN, $file ) || die "can't open $file for reading: $!";
+    open( IN, "<", $file ) || die "can't open $file for reading: $!";
     while (<IN>) {
         chomp;
         push @featlist, $_;
@@ -875,7 +866,7 @@ sub send_to_fasta {
     $cogeweb = CoGe::Accessory::Web::initialize_basefile( tempdir => $TEMPDIR );
     my $basename = $cogeweb->basefilename;
     my $file     = $TEMPDIR . "$basename.faa";
-    open( OUT, ">$file" );
+    open( OUT, ">", "$file" );
     foreach my $dsgid ( split( /,/, $accn_list ) ) {
         next unless $dsgid;
         my ($dsg) = $coge->resultset('Genome')->find($dsgid);
@@ -963,7 +954,7 @@ sub send_to_csv {
     $cogeweb = CoGe::Accessory::Web::initialize_basefile( tempdir => $TEMPDIR );
     my $basename = $cogeweb->basefilename;
     my $file     = "$TEMPDIR/$basename.csv";
-    open( OUT, ">$file" );
+    open( OUT, ">", "$file" );
     print OUT join( "\t",
         "CoGe Genome ID",
         "Name",

@@ -1445,7 +1445,7 @@ qq{select name, type, bpmin, bpmax, image_id, pair_id, link, annotation, strand 
         }
     }
     my $synfile = $basefile . "syn_pairs.mGSV.txt";
-    open( OUT, ">" . $synfile );
+    open( OUT, ">", $synfile );
     print OUT "#",
       join( "\t",
         qw (org1   org1_start      org1_end        org2    org2_start      org2_end        score   evalue)
@@ -1467,7 +1467,7 @@ qq{select name, type, bpmin, bpmax, image_id, pair_id, link, annotation, strand 
     }
     close OUT;
     my $annofile = $basefile . "anno.mGSV.txt";
-    open( OUT, ">$annofile" );
+    open( OUT, ">", "$annofile" );
     print OUT "#",
       join( "\t",
         qw(org_id start   end     strand  feature_name    feature_value   track_name      track_shape     track_color)
@@ -2703,7 +2703,7 @@ sub get_obj_from_genome_db {
     $accn = $ds->name  if !$accn && $ds;
     if ( -r $seq_file ) {
         $/ = "\n";
-        open( IN, $seq_file );
+        open( IN, "<", $seq_file );
         while (<IN>) {
             chomp;
             next if /^>/;    #skip header;
@@ -2837,7 +2837,7 @@ sub get_obj_from_genome_db {
         my $prot_file = $seq_file . ".prot";
         my $tmp;
         ( $tmp, $prot_file ) = CoGe::Accessory::Web::check_taint($prot_file);
-        open( OUT, ">$prot_file" );
+        open( OUT, ">", "$prot_file" );
         print OUT $prot_sequence if $prot_sequence;
         close OUT;
         $obj->other_stuff($prot_file);
@@ -3476,7 +3476,7 @@ sub write_fasta {
     $seq = substr( $seq, $start - 1, $stop - $start + 1 );
     $gbobj->sequence($seq);    #replace objects sequence with modified sequence
     ($fullname) = CoGe::Accessory::Web::check_filename_taint($fullname);
-    open( OUT, ">$fullname" ) or die "Couldn't open '$fullname': $!";
+    open( OUT, ">", "$fullname" ) or die "Couldn't open '$fullname': $!";
     print OUT "$hdr\n";
     print OUT $seq, "\n";
     close(OUT);
@@ -3531,7 +3531,7 @@ sub generate_annotation {
         }
     }
     return unless keys %data;
-    open( OUT, ">$fullname" ) || die "Can't open $fullname for writing! $!\n";
+    open( OUT, ">", "$fullname" ) || die "Can't open $fullname for writing! $!\n";
     foreach my $name ( keys %data ) {
         my $gene = $data{$name}{gene};
         if ($gene) {

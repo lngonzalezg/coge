@@ -41,3 +41,5 @@ coge.conf.*
 Cargo.lock
 **/*.rs.bk
 target
+SECURITY_ASSESSMENT.md
+SECURITY_VALIDATION.md

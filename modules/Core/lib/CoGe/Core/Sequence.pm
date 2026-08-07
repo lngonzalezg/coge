@@ -31,10 +31,11 @@ sub cache_features {
     my ($self, $features, $type_id, $db) = @_;
     my $chromosomes = CoGe::Core::Chromosomes->new($self->{gid})->hash;
     open FILE, '>' . $features;
-    my $datasets = $db->storage->dbh->selectall_arrayref('SELECT dataset_id FROM dataset_connector WHERE genome_id=' . $self->{gid});
+    # Security pass 1 (S6): bind gid/dataset_id/type_id rather than interpolate.
+    my $datasets = $db->storage->dbh->selectall_arrayref('SELECT dataset_id FROM dataset_connector WHERE genome_id=?', undef, $self->{gid});
     for my $dataset (@$datasets) {
-        my $sth = $db->storage->dbh->prepare('SELECT location.chromosome,location.start,location.stop,location.strand FROM feature JOIN location USING (feature_id) WHERE dataset_id=' . $dataset->[0] . ' AND feature_type_id=' . $type_id . ' AND feature.chromosome=location.chromosome AND feature.strand=location.strand AND location.start>=feature.start AND location.start<=feature.stop AND location.stop>=feature.start AND location.stop<=feature.stop');
-        $sth->execute;
+        my $sth = $db->storage->dbh->prepare('SELECT location.chromosome,location.start,location.stop,location.strand FROM feature JOIN location USING (feature_id) WHERE dataset_id=? AND feature_type_id=? AND feature.chromosome=location.chromosome AND feature.strand=location.strand AND location.start>=feature.start AND location.start<=feature.stop AND location.stop>=feature.start AND location.stop<=feature.stop');
+        $sth->execute($dataset->[0], $type_id);
         my $loc = $sth->fetchrow_arrayref;
         while ($loc) {
             my $chr = $chromosomes->{$loc->[0]};

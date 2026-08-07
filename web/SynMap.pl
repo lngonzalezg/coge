@@ -8,6 +8,7 @@ use CoGeX;
 use CoGeX::Result::Genome qw(ERROR LOADING);
 use CoGe::Accessory::Web qw(internal_url_for internal_api_url_for url_for api_url_for get_command_path);
 use CoGe::Accessory::Utils qw( commify html_escape );
+use CoGe::Accessory::Validate qw( contained_path );
 use CoGe::Builder::Tools::SynMap;
 use CoGe::Core::Genome qw(genomecmp genomecmp2);
 use CoGe::Core::Favorites;
@@ -86,7 +87,7 @@ $DIAGSDIR = $config->{DIAGSDIR};
 $FASTADIR = $config->{FASTADIR};
 
 mkpath( $FASTADIR,         0, 0777 );
-mkpath( $DIAGSDIR,         0, 0777 );    # mdb added 7/9/12
+mkpath( $DIAGSDIR,         0, 0750 );    # mdb added 7/9/12; mode tightened in security pass 1 (C1) — was 0777
 mkpath( $config->{LASTDB}, 0, 0777 );    # mdb added 7/9/12
 $BLASTDBDIR = $config->{BLASTDB};
 
@@ -614,12 +615,25 @@ sub gen_dsg_menu {
 sub read_file {
 	my $file = shift;
 
-	my $html;
-	open( IN, $TEMPDIR . $file ) || die "can't open $file for reading: $!";
-	while (<IN>) {
-		$html .= $_;
+	# Security pass 1 (R3): was a 2-argument open($TEMPDIR . $file). A trailing '|' made
+	# Perl run the string as a command (RCE) and '..' escaped $TEMPDIR (arbitrary read).
+	# Now: resolve the path and require it to stay inside $TEMPDIR, then 3-arg read-only
+	# open (no metacharacter interpretation).
+	return unless defined $file && length $file;
+	my $rel = $file;
+	$rel =~ s{^/+}{};    # original concatenated straight onto $TEMPDIR
+	my $path = contained_path($TEMPDIR, $rel);
+	unless (defined $path) {
+		warn "SynMap::read_file: refusing path outside TEMPDIR: '$file'\n";
+		return;
 	}
-	close IN;
+	open( my $in, '<', $path ) or do {
+		warn "SynMap::read_file: can't open '$path': $!\n";
+		return;
+	};
+	local $/;
+	my $html = <$in>;
+	close $in;
 	return $html;
 }
 
@@ -1353,7 +1367,7 @@ sub get_results {
 	return encode_json( { error => "The output $final_dagchainer_file_condensed could not be found." } ) unless (-r $final_dagchainer_file_condensed);
 	#Dotplot
 	$/ = "\n";
-	open( IN, "$out.html" )
+	open( IN, "<", "$out.html" )
 		|| warn "problem opening $out.html for reading\n";
 	$axis_metric = $axis_metric =~ /g/ ? "genes" : "nucleotides";
 	$html .=

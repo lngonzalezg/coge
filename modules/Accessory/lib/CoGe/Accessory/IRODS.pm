@@ -56,10 +56,11 @@ sub irods_ils {
     return { error => "Error: iRODS env file missing" } unless $env_file;
 
     $path = uri_unescape($path); # mdb added 8/15/14 issue 441
-    $ENV{irodsEnvFile} = $env_file;  # mdb added 2/17/16 for hypnotoad
-    my $cmd = "ils -l '$path' 2>&1"; #"export irodsEnvFile='$env_file'; ils -l '$path' 2>&1"; # mdb changed 2/17/16 for hypnotoad
-
-    my @ils = capture( EXIT_ANY, $cmd );
+    # Security pass 1 (R4): was capture(EXIT_ANY, "ils -l '$path' 2>&1") -- a single
+    # string, so IPC::System::Simple ran it through /bin/sh and $path was injectable via
+    # a literal quote. List-form capture bypasses the shell; env is localized.
+    local $ENV{irodsEnvFile} = $env_file;
+    my @ils = capture( EXIT_ANY, 'ils', '-l', $path );
     if ($EXITVAL) {
         return { error => "Error: ils rc=$EXITVAL" };
     }
@@ -136,9 +137,9 @@ sub irods_chksum {
     my $env_file = _irods_get_env_file();
     return unless $env_file;
 
-    my $cmd = "export irodsEnvFile='$env_file' && ichksum $path";
-    #print STDERR "cmd: $cmd\n";
-    my @output = `$cmd`;
+    # Security pass 1 (R4): shell-free; $path was unquoted in the old shell string.
+    local $ENV{irodsEnvFile} = $env_file;
+    my @output = capture( EXIT_ANY, 'ichksum', $path );
     my ($chksum) = $output[0] =~ /\s*\S+\s+(\S+)/;
 
     #print STDERR "chksum: $chksum\n";
@@ -160,10 +161,12 @@ sub irods_iget {
     my $env_file = _irods_get_env_file();
     return unless $env_file;
 
-    my $cmd = "export irodsEnvFile='$env_file' && iget -fT '$src' '$dest'";
+    # Security pass 1 (R4): shell-free execution; keep a display string for no_execute.
+    my @args = ( 'iget', '-fT', $src, $dest );
+    my $cmd = "export irodsEnvFile='$env_file' && " . join( ' ', @args );
     return $cmd if $no_execute;
-    #print STDERR "cmd: $cmd\n";
-    my @result = `$cmd`;
+    local $ENV{irodsEnvFile} = $env_file;
+    my @result = capture( EXIT_ANY, @args );
     #print STDERR "@result";
 
     return;
@@ -179,13 +182,15 @@ sub irods_iput {
     my $env_file = _irods_get_env_file();
     return unless $env_file;
 
-    my $cmd = "export irodsEnvFile='$env_file' && iput -T";
-    $cmd .= " -f " if $overwrite;
-    $cmd .= " '$src' '$dest'";
+    # Security pass 1 (R4): shell-free execution; keep a display string for no_execute.
+    my @args = ( 'iput', '-T' );
+    push @args, '-f' if $overwrite;
+    push @args, $src, $dest;
+    my $cmd = "export irodsEnvFile='$env_file' && " . join( ' ', @args );
 
     return $cmd if $no_execute;
-    #print STDERR "cmd: $cmd\n";
-    my @result = `$cmd`;
+    local $ENV{irodsEnvFile} = $env_file;
+    my @result = capture( EXIT_ANY, @args );
     warn Dumper \@result;
 
     return;
@@ -205,9 +210,10 @@ sub irods_imeta_add {
 			next;
 		}
 
-	    my $cmd = "export irodsEnvFile='$env_file' && imeta add -d '" . $dest . "' '" . $k . "' '" . $v . "'";
-	    #print STDERR "cmd: $cmd\n";
-	    my @result = `$cmd`;
+	    # Security pass 1 (R4): shell-free; $dest/$k/$v were single-quoted in a shell
+	    # string and breakable with a literal quote.
+	    local $ENV{irodsEnvFile} = $env_file;
+	    my @result = capture( EXIT_ANY, 'imeta', 'add', '-d', $dest, $k, $v );
 	    #print STDERR "@result";
 	}
 
@@ -220,8 +226,9 @@ sub irods_imeta_ls {
     my $env_file = _irods_get_env_file();
     return unless $env_file;
 
-    my $cmd = "export irodsEnvFile='$env_file' && imeta ls -d '" . $dest . "' '" . $attribute . "'";
-    my @result = `$cmd`;
+    # Security pass 1 (R4): shell-free.
+    local $ENV{irodsEnvFile} = $env_file;
+    my @result = capture( EXIT_ANY, 'imeta', 'ls', '-d', $dest, $attribute );
 
     return \@result;
 }
@@ -233,8 +240,10 @@ sub irods_imkdir {
     my $env_file = _irods_get_env_file();
     return 'irods env file missing' unless $env_file;
 
-    my $cmd = "export irodsEnvFile='$env_file' && imkdir -p '" . $path . "'";
-    my @result = `$cmd`;
+    # Security pass 1 (R4): shell-free; $path was single-quoted and injectable. This is
+    # the sink reachable from POST /irods/mkdir.
+    local $ENV{irodsEnvFile} = $env_file;
+    my @result = capture( EXIT_ANY, 'imkdir', '-p', $path );
     return $result[0] if scalar @result;
 }
 
@@ -245,8 +254,9 @@ sub irods_irm {
     my $env_file = _irods_get_env_file();
     return 'irods env file missing' unless $env_file;
 
-    my $cmd = "export irodsEnvFile='$env_file' && irm -rf '" . $path . "'";
-    my @result = `$cmd`;
+    # Security pass 1 (R4): shell-free; $path was single-quoted and injectable.
+    local $ENV{irodsEnvFile} = $env_file;
+    my @result = capture( EXIT_ANY, 'irm', '-rf', $path );
     return $result[0] if scalar @result;
 }
 

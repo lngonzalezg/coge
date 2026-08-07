@@ -429,7 +429,7 @@ sub parse_deliminated {
 sub read_file {
     my $file = shift;
     my $tmp;
-    open( IN, $file ) || die "can't open $file for reading: $!";
+    open( IN, "<", $file ) || die "can't open $file for reading: $!";
     while (<IN>) {
         $tmp .= $_;
     }
@@ -442,7 +442,7 @@ sub save_file {
     my $file   = $cogeweb->basefile . "_aragorn.tabbed";
     #print STDERR "lalalalalalalala\n\n";
     #print STDERR $file, "\n";
-    open( NEW, "> $file" ) || die "Cannot Save $!\n";
+    open( NEW, ">", "$file" ) || die "Cannot Save $!\n";
     print NEW $output;
     close NEW;
     $file =~ s/$TEMPDIR/$TEMPURL/;
@@ -453,7 +453,7 @@ sub save_file {
 sub make_fasta_file {
     my $seq  = shift;
     my $file = $cogeweb->basefile . "fasta";
-    open( NEW, "> $file" ) || die "Cannot Save $!\n";
+    open( NEW, ">", "$file" ) || die "Cannot Save $!\n";
     print NEW $seq;
     close NEW;
     return $file;
@@ -506,7 +506,7 @@ sub generate_fasta {
     $file = $FASTADIR . "/$file" unless $file =~ /$FASTADIR/;
     CoGe::Accessory::Web::write_log( "creating fasta file.",
         $cogeweb->logfile );
-    open( OUT, ">$file" ) || die "Can't open $file for writing: $!";
+    open( OUT, ">", "$file" ) || die "Can't open $file for writing: $!";
     foreach my $ds (@$dslist) {
         next unless $USER->has_access_to_dataset($ds);
         foreach my $chr ( sort $ds->get_chromosomes ) {

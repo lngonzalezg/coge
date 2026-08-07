@@ -1197,7 +1197,7 @@ qq{<span class=small>Hits colored by Identity.  <span style="color:#AA0000">Min:
                 my $map_file = $cogeweb->basefile . "_$count.$hsp_type.map";
                 ( $x, $map_file ) =
                   CoGe::Accessory::Web::check_taint($map_file);
-                open( MAP, ">$map_file" );
+                open( MAP, ">", "$map_file" );
                 print MAP $image_map;
                 close MAP;
                 $data{$org}{image}->image_width($large_width);
@@ -1212,7 +1212,7 @@ qq{<span class=small>Hits colored by Identity.  <span style="color:#AA0000">Min:
                 $map_file = $cogeweb->basefile . "_$count.$hsp_type.large.map";
                 ( $x, $map_file ) =
                   CoGe::Accessory::Web::check_taint($map_file);
-                open( MAP, ">$map_file" );
+                open( MAP, ">", "$map_file" );
                 print MAP $image_map_large;
                 close MAP;
             }
@@ -1279,7 +1279,7 @@ qq{<span class=small>Hits colored by Identity.  <span style="color:#AA0000">Min:
 sub get_map {
     my $file = shift;
     my $map;
-    open( IN, $file ) || die "$!";
+    open( IN, "<", $file ) || die "$!";
     while (<IN>) {
         $map .= $_;
     }
@@ -1294,7 +1294,7 @@ sub generate_fasta {
     $file = $FASTADIR . "/$file" unless $file =~ /$FASTADIR/;
     CoGe::Accessory::Web::write_log( "creating fasta file.",
         $cogeweb->logfile );
-    open( OUT, ">$file" ) || die "Can't open $file for writing: $!";
+    open( OUT, ">", "$file" ) || die "Can't open $file for writing: $!";
     foreach my $ds (@$dslist) {
         foreach my $chr ( sort $ds->get_chromosomes ) {
             my $title =
@@ -2263,7 +2263,7 @@ sub generate_tab_deliminated {
     }
     $str =~ s/\n$//;
 
-    open( NEW, "> $TEMPDIR/tab_delim$filename.tabbed" );
+    open( NEW, ">", "$TEMPDIR/tab_delim$filename.tabbed" );
     print NEW $str;
     close NEW;
     return "$TEMPURL/tab_delim$filename.tabbed";
@@ -2434,7 +2434,7 @@ qq{Org\tChr\tPosition\tStrand\tHSP No.\tPercent ID\tAlignment length\tE-value\tS
 "$org\t$chr\t$pos\t$strand\t$hsp_num\t$pid\t$align_length\t$eval\t$score\t$match\t$query_mismatch\t$query_gap\t$query_length\t$subject_mismatch\t$subject_gap\t$subject_length\t$query_seq\t$subject_seq\n";
     }
 
-    open( NEW, "> $TEMPDIR/tab_delim_$filename.txt" );
+    open( NEW, ">", "$TEMPDIR/tab_delim_$filename.txt" );
     print NEW $str;
     close NEW;
 
@@ -2473,7 +2473,7 @@ sub export_hsp_query_fasta {
           . $qstop . "\n"
           . $query_seq . "\n";
     }
-    open( NEW, "> $TEMPDIR/query_fasta_$filename.txt" );
+    open( NEW, ">", "$TEMPDIR/query_fasta_$filename.txt" );
     print NEW $fasta;
     close NEW;
     return "$TEMPURL/query_fasta_$filename.txt";
@@ -2519,7 +2519,7 @@ sub export_hsp_subject_fasta {
           . "($strand)" . "\n"
           . $subject_seq . "\n";
     }
-    open( NEW, "> $TEMPDIR/subject_fasta_$filename.txt" );
+    open( NEW, ">", "$TEMPDIR/subject_fasta_$filename.txt" );
     print NEW $fasta;
     close NEW;
     return "$TEMPURL/subject_fasta_$filename.txt";
@@ -2579,7 +2579,7 @@ sub export_alignment_file {
           . $sseq . "\n\n";
     }
     $str =~ s/\n+$//;
-    open( NEW, "> $TEMPDIR/alignment_file_$filename.txt" );
+    open( NEW, ">", "$TEMPDIR/alignment_file_$filename.txt" );
     print NEW $str;
     close NEW;
     return "$TEMPURL/alignment_file_$filename.txt";

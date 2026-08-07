@@ -5,6 +5,8 @@ extends 'CoGe::Builder::Buildable';
 
 use CoGe::Accessory::Utils qw(sanitize_name);
 use CoGe::Accessory::Web qw(download_url_for get_command_path url_for);
+use CoGe::Accessory::Validate qw(valid_id);
+use String::ShellQuote qw(shell_quote);
 use CoGe::Builder::CommonTasks qw(add_workflow_result);
 use CoGe::Core::Storage qw(get_download_path);
 use Data::Dumper;
@@ -79,6 +81,13 @@ sub add_jobs {
     my $count = 1;
 
     foreach my $dsgid (@dsg_ids) {
+        # Security pass 1 (R5): genome IDs flow into a JEX shell command below. Skip any
+        # id that is not a bare positive integer so metacharacters can never reach the
+        # shell (JEX runs `cmd` via /bin/sh, so validation is the control here).
+        unless (defined valid_id($dsgid)) {
+            CoGe::Accessory::Web::write_log("skipping non-numeric genome id '$dsgid'", $cogeweb->logfile);
+            next;
+        }
         my ( $org, $dbfasta, $dsg ) = get_blast_db($dsgid, $db);
         next unless $dbfasta;
         next unless -s $fasta_file;
@@ -88,8 +97,11 @@ sub add_jobs {
         my $BLASTDB = $config->{MAKEBLASTDB} || "makeblastdb";
         my $cmd;
         $cmd = "mkdir $dbpath && " unless -e $dbpath;
+        # Security pass 1 (R5): shell-quote the DB-sourced organism name (second-order
+        # injection -- organism names are user-supplied at load time). $dsgid/$dbpath are
+        # safe now that $dsgid is validated as an integer.
         $cmd .= "cd $dbpath && " .
-                "$BLASTDB -in $dbfasta -out $dsgid -dbtype nucl -title " . qq{"$name"} . " -logfile db.log && " .
+                "$BLASTDB -in $dbfasta -out $dsgid -dbtype nucl -title " . shell_quote($name) . " -logfile db.log && " .
                 "touch done";
         $workflow->add_job({
             cmd => $cmd,
@@ -323,7 +335,11 @@ sub get_genomes {
     my $db = shift;
 
     my @gids;
-    @gids = @$genomes if $genomes;
+    # Security pass 1 (R5/S3): keep only bare integer genome IDs. The array arrives
+    # verbatim from the JSON job payload and is used both in the restricted-genome
+    # permission check (Request::CoGeBlast) and the JEX blast-db command, so a
+    # non-numeric entry is dropped here rather than reaching either sink.
+    @gids = grep { defined valid_id($_) } @$genomes if $genomes;
     if ($notebooks) {
         for (@$notebooks) {
             for (@{$db->resultset("List")->find($_)->genomes}) {

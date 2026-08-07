@@ -6,6 +6,7 @@ use CoGeX;
 use CoGeX::Result::Genome qw(ERROR LOADING);
 use CoGe::JEX::Jex;
 use CoGe::Accessory::Web;
+use CoGe::Accessory::Validate qw(valid_filename);
 use CoGe::Accessory::Utils qw(sanitize_name get_unique_id commify execute);
 use CoGe::Accessory::IRODS qw(irods_iput irods_imeta_add);
 use CoGe::Core::Chromosomes;
@@ -343,9 +344,12 @@ sub get_wobble_gc {
     return "error" unless $total;
 
     my $file = $TEMPDIR . "/" . join( "_", @dsids );    #."_wobble_gc.txt";
-    ($min) = $min =~ /(.*)/ if defined $min;
-    ($max) = $max =~ /(.*)/ if defined $max;
-    ($chr) = $chr =~ /(.*)/ if defined $chr;
+    # Security pass 1 (R1): replaced taint-laundering no-ops (=~ /(.*)/) with real
+    # validation. These flow into the on-disk histogram filename below, so keep only
+    # safe values: min/max numeric, chr a single path-free component.
+    $min = ($min =~ /^(-?\d+(?:\.\d+)?)$/ ? $1 : undef) if defined $min;
+    $max = ($max =~ /^(-?\d+(?:\.\d+)?)$/ ? $1 : undef) if defined $max;
+    $chr = valid_filename($chr) if defined $chr;
     $file .= "_" . $chr . "_" if defined $chr;
     $file .= "_min" . $min    if defined $min;
     $file .= "_max" . $max    if defined $max;
@@ -355,16 +359,10 @@ sub get_wobble_gc {
     print OUT "#wobble gc for dataset ids: " . join( " ", @dsids ), "\n";
     print OUT join( "\n", @data ), "\n";
     close OUT;
-    my $cmd = $HISTOGRAM;
-    $cmd .= " -f $file";
     my $out = $file;
     $out =~ s/txt$/png/;
-    $cmd .= " -o $out";
-    $cmd .= " -t \"CDS wobble gc content\"";
-    $cmd .= " -min 0";
-    $cmd .= " -max 100";
-    $cmd .= " -ht $hist_type" if $hist_type;
-    `$cmd`;
+    CoGe::Accessory::Web::run_histogram( bin => $HISTOGRAM, file => $file, out => $out,
+        title => "CDS wobble gc content", min => 0, max => 100, hist_type => $hist_type );
     $min = 0   unless defined $min && $min =~ /\d+/;
     $max = 100 unless defined $max && $max =~ /\d+/;
     my $info;
@@ -440,13 +438,10 @@ sub get_wobble_gc_diff {
     print OUT "#wobble gc for dataset ids: " . join( " ", @dsids ), "\n";
     print OUT join( "\n", @$data ), "\n";
     close OUT;
-    my $cmd = $HISTOGRAM;
-    $cmd .= " -f $file";
     my $out = $file;
     $out =~ s/txt$/png/;
-    $cmd .= " -o $out";
-    $cmd .= " -t \"CDS GC - wobble gc content\"";
-    `$cmd`;
+    CoGe::Accessory::Web::run_histogram( bin => $HISTOGRAM, file => $file, out => $out,
+        title => "CDS GC - wobble gc content" );
     my $sum = 0;
     map { $sum += $_ } @$data;
     my $mean = sprintf( "%.2f", $sum / scalar @$data );
@@ -594,9 +589,12 @@ sub get_gc_for_feature_type {
     my $file = $TEMPDIR . "/" . join( "_", @dsids );
 
     #perl -T flag
-    ($min) = $min =~ /(.*)/ if defined $min;
-    ($max) = $max =~ /(.*)/ if defined $max;
-    ($chr) = $chr =~ /(.*)/ if defined $chr;
+    # Security pass 1 (R1): replaced taint-laundering no-ops (=~ /(.*)/) with real
+    # validation. These flow into the on-disk histogram filename below, so keep only
+    # safe values: min/max numeric, chr a single path-free component.
+    $min = ($min =~ /^(-?\d+(?:\.\d+)?)$/ ? $1 : undef) if defined $min;
+    $max = ($max =~ /^(-?\d+(?:\.\d+)?)$/ ? $1 : undef) if defined $max;
+    $chr = valid_filename($chr) if defined $chr;
     $file .= "_" . $chr . "_" if defined $chr;
     $file .= "_min" . $min    if defined $min;
     $file .= "_max" . $max    if defined $max;
@@ -606,16 +604,10 @@ sub get_gc_for_feature_type {
     print OUT "#wobble gc for dataset ids: " . join( " ", @dsids ), "\n";
     print OUT join( "\n", @data ), "\n";
     close OUT;
-    my $cmd = $HISTOGRAM;
-    $cmd .= " -f $file";
     my $out = $file;
     $out =~ s/txt$/png/;
-    $cmd .= " -o $out";
-    $cmd .= " -t \"" . $type->name . " gc content\"";
-    $cmd .= " -min 0";
-    $cmd .= " -max 100";
-    $cmd .= " -ht $hist_type" if $hist_type;
-    `$cmd`;
+    CoGe::Accessory::Web::run_histogram( bin => $HISTOGRAM, file => $file, out => $out,
+        title => $type->name . " gc content", min => 0, max => 100, hist_type => $hist_type );
 
     $min = 0   unless defined $min && $min =~ /\d+/;
     $max = 100 unless defined $max && $max =~ /\d+/;
@@ -684,16 +676,10 @@ sub get_chr_length_hist { #TODO use API Genome Fetch
     print OUT "#chromosome/contig lengths for $dsgid\n";
     print OUT join( "\n", @data ), "\n";
     close OUT;
-    my $cmd = $HISTOGRAM;
-    $cmd .= " -f $file";
     my $out = $file;
     $out =~ s/txt$/png/;
-    $cmd .= " -o $out";
-    $cmd .=
-        " -t \"Chromosome length for "
-      . $dsg->organism->name . " (v"
-      . $dsg->version . ")\"";
-    `$cmd`;
+    CoGe::Accessory::Web::run_histogram( bin => $HISTOGRAM, file => $file, out => $out,
+        title => "Chromosome length for " . $dsg->organism->name . " (v" . $dsg->version . ")" );
     my $sum = 0;
     map { $sum += $_ } @data;
     my $n50;

@@ -20,8 +20,12 @@ sub has_access {
            return unless $self->user->has_access_to_genome($self->db->resultset("Genome")->find($_));
         }
         else {
-            my @a = $self->db->storage->dbh->selectrow_array('SELECT restricted FROM genome WHERE genome_id=' . $_ );
-            return if $a[0];
+            # Security pass 1 (S3): was raw SQL concatenating the genome id into the
+            # anonymous-user restricted-genome check -- an injection here also defeated
+            # the access gate. Genome ids are now integer-validated in get_genomes, and
+            # this uses the same ORM lookup as the authenticated branch above (bound).
+            my $genome = $self->db->resultset("Genome")->find($_);
+            return if $genome && $genome->restricted;
         }
     }
     return 1;

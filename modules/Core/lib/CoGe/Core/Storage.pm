@@ -29,6 +29,7 @@ use strict;
 use warnings;
 
 use CoGe::Accessory::Web qw(get_defaults get_command_path url_for);
+use CoGe::Accessory::Validate qw(valid_filename);
 use CoGe::Accessory::TDS qw(read append);
 use CoGe::Accessory::IRODS qw(irods_iget irods_ils irods_imkdir irods_irm);
 use File::Basename;
@@ -693,9 +694,20 @@ sub get_upload_path {
         print STDERR "Storage::get_upload_path ERROR: missing required param\n";
         return;
     }
-    
+
+    # Security pass 1 (R2): load_id arrives unvalidated from request params (e.g.
+    # JBrowse/Search.pm) and both components are concatenated straight into a filesystem
+    # path. Reject anything that is not a single safe path component so '..', '/', and
+    # shell metacharacters can neither traverse nor (downstream) reach a shell.
+    my $safe_user = valid_filename($user_name);
+    my $safe_load = valid_filename($load_id);
+    unless (defined $safe_user && defined $safe_load) {
+        print STDERR "Storage::get_upload_path ERROR: invalid path component (user='$user_name', load_id='$load_id')\n";
+        return;
+    }
+
     my $conf = CoGe::Accessory::Web::get_defaults();
-    return catdir($conf->{SECTEMPDIR}, 'uploads', $user_name, $load_id);
+    return catdir($conf->{SECTEMPDIR}, 'uploads', $safe_user, $safe_load);
 }
 
 sub get_download_path {

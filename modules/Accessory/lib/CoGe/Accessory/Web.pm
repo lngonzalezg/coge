@@ -27,9 +27,13 @@ use Digest::MD5 qw(md5_base64);
 use POSIX qw(!tmpnam !tmpfile);
 use Mail::Mailer;
 use URI;
-use MIME::Base64 qw(decode_base64);
+use MIME::Base64 qw(decode_base64 encode_base64);
 use Crypt::OpenSSL::RSA;
 use Time::HiRes qw(time);
+# Security pass 1: load the validators WITHOUT importing (Validate has no default
+# @EXPORT). namespace::clean below would strip imported subs from this package, so we
+# call them fully-qualified (CoGe::Accessory::Validate::valid_*) throughout Web.pm.
+use CoGe::Accessory::Validate ();
 use namespace::clean; # needs to be last, http://blog.twoshortplanks.com/2010/07/17/clea/
 
 =head1 NAME
@@ -65,7 +69,7 @@ BEGIN {
     $VERSION = 0.1;
     $TEMPDIR = catdir($BASEDIR, 'web', 'tmp'); #FIXME move out of web
     @ISA     = ( qw (Exporter Class::Accessor) );
-    @EXPORT  = qw( get_session_id check_filename_taint check_taint gunzip gzip 
+    @EXPORT  = qw( generate_session_id check_filename_taint check_taint gunzip gzip
                    send_email get_defaults set_defaults internal_url_for url_for internal_api_url_for api_url_for get_job 
                    schedule_job render_template ftp_get_path ftp_get_file split_url
                    parse_proxy_response jwt_decode_token add_user write_log log_history
@@ -91,7 +95,13 @@ sub get_user {
     $session = get_cookie_session(cookie_name => $cookie_name);
 
     if ($session) {
-        my ($user_session) = $coge->resultset("UserSession")->find( { session => $session } );
+        # Security pass 1 (A2): enforce a 7-day server-side expiry against the existing
+        # (previously unread) `date` column. Matches the +7d cookie lifetime gen_cookie
+        # already sets, so no new logout behaviour is introduced.
+        my ($user_session) = $coge->resultset("UserSession")->search({
+            session => $session,
+            date    => { '>' => \"DATE_SUB(NOW(), INTERVAL 7 DAY)" },
+        })->first;
         $user = $user_session->user if $user_session;
     }
 
@@ -106,7 +116,15 @@ sub get_user {
         if ($user_id) {
             $user_id = substr($user_id, 8, index($user_id, ';') - 8);
             my $u = $coge->resultset('User')->find($user_id);
-            $user = $u if $u;
+            # Security pass 1 (A3): retained admin support tool, now audited so the
+            # impersonation is attributable instead of silent. See Auth.pm for the
+            # matching API-side log.
+            if ($u) {
+                print STDERR sprintf(
+                    "Web::get_user: IMPERSONATION admin '%s' (id %s) -> user '%s' (id %s)\n",
+                    $user->user_name, $user->id, $u->user_name, $u->id);
+                $user = $u;
+            }
         }
     }
     return ($user);
@@ -365,11 +383,20 @@ sub self_or_default {    #from CGI.pm
     return wantarray ? @_ : $Q;
 }
 
-sub get_session_id {
-    my ($user_name, $remote_ip) = @_;
-    my $session_id = md5_base64( $user_name . $remote_ip );
-    $session_id =~ s/\+/1/g;
-    return $session_id;
+# Security pass 1 (A2): the old get_session_id was md5_base64($user_name . $remote_ip)
+# -- no secret, no randomness, never rotated -- so any session id was recomputable from
+# a username and IP. Replaced with a CSPRNG token: 16 bytes from /dev/urandom, base64url,
+# padding stripped -> exactly 22 chars, which fits the existing session varchar(22).
+# get_session_id is deleted outright (its (user,ip) signature was the bug); every caller
+# now mints with generate_session_id().
+sub generate_session_id {
+    open(my $fh, '<:raw', '/dev/urandom') or die "cannot open /dev/urandom: $!";
+    read($fh, my $bytes, 16) == 16 or die "short read from /dev/urandom";
+    close $fh;
+    my $id = encode_base64($bytes, '');
+    $id =~ s/=+$//;        # 24 -> 22 chars
+    $id =~ tr{+/}{-_};     # URL- and cookie-safe
+    return $id;            # exactly 22 chars
 }
 
 sub logout_coge { # mdb added 3/24/14, issue 329
@@ -382,12 +409,18 @@ sub logout_coge { # mdb added 3/24/14, issue 329
     $url = $form->url() unless $url;
 #    print STDERR "Web::logout_coge url=", ($url ? $url : ''), "\n";
 
-    # Delete user session from db
-    my $session_id = get_cookie_session(cookie_name => $CONF->{COOKIE_NAME})
-        || get_session_id($user->user_name, $ENV{REMOTE_ADDR});
-
-    my ($session) = $coge->resultset('UserSession')->find( { session => $session_id } );
-    $session->delete if $session;
+    # Delete user session from db. Security pass 1 (A2): dropped the
+    # get_session_id($user,$ip) fallback -- random ids never match a recomputed value, so
+    # it was dead code that only kept the vulnerable function alive. With a cookie, delete
+    # that session; without one, delete all sessions for this user ("log out everywhere").
+    my $session_id = get_cookie_session(cookie_name => $CONF->{COOKIE_NAME});
+    if ($session_id) {
+        my ($session) = $coge->resultset('UserSession')->find( { session => $session_id } );
+        $session->delete if $session;
+    }
+    elsif ( $user && ref($user) =~ /User/ && $user->id ) {
+        $coge->resultset('UserSession')->search( { user_id => $user->id } )->delete_all;
+    }
 
     print "Location: ", $form->redirect($url);
 }
@@ -402,12 +435,18 @@ sub logout_cas {
     $url = $form->url() unless $url;
 #    print STDERR "Web::logout_cas url=", ($url ? $url : ''), "\n";
 
-    # Delete user session from db
-    my $session_id = get_cookie_session(cookie_name => $CONF->{COOKIE_NAME})
-        || get_session_id($user->user_name, $ENV{REMOTE_ADDR});
-
-    my ($session) = $coge->resultset('UserSession')->find( { session => $session_id } );
-    $session->delete if $session;
+    # Delete user session from db. Security pass 1 (A2): dropped the
+    # get_session_id($user,$ip) fallback -- random ids never match a recomputed value, so
+    # it was dead code that only kept the vulnerable function alive. With a cookie, delete
+    # that session; without one, delete all sessions for this user ("log out everywhere").
+    my $session_id = get_cookie_session(cookie_name => $CONF->{COOKIE_NAME});
+    if ($session_id) {
+        my ($session) = $coge->resultset('UserSession')->find( { session => $session_id } );
+        $session->delete if $session;
+    }
+    elsif ( $user && ref($user) =~ /User/ && $user->id ) {
+        $coge->resultset('UserSession')->search( { user_id => $user->id } )->delete_all;
+    }
 
     print "Location: ", $form->redirect(get_defaults()->{CAS_URL} . "/logout?service=" . $url . "&gateway=1");
 }
@@ -422,6 +461,13 @@ sub gen_cookie {
 
     $params{-expires} = $exp if $exp;
     $params{ -values } = { session => $session } if $session;
+    # Security pass 1 (W1): mark the session cookie HttpOnly (unreadable by JS, so an
+    # XSS cannot steal it) and SameSite=Lax (not sent on cross-site requests, blunting
+    # CSRF). -secure is intentionally NOT set yet: this deployment publishes only :80
+    # (no TLS), so Secure would stop the cookie being sent and break login. Add
+    # -secure => 1 in the same change as the TLS work (C3).
+    $params{ -httponly } = 1;
+    $params{ -samesite } = 'Lax';
     my $c = new CGI::Cookie(%params);
     return $c;
 }
@@ -450,7 +496,7 @@ sub login_cas_proxy {
     my $user = add_user($coge, $uname, $fname, $lname, $email);
 
     #create a session ID for the user and log
-    my $session_id = get_session_id($uname, $ENV{REMOTE_ADDR});
+    my $session_id = generate_session_id(); # security pass 1 (A2): CSPRNG, not md5(user+ip)
     $coge->log_user( user => $user, session => $session_id );
 
 	# mdb added 10/19/12 - FIXME key/secret are hardcoded - wait: this will get replaced by openauth soon
@@ -541,7 +587,7 @@ sub login_cas_saml {
     my $user = add_user($coge, $uname, $fname, $lname, $email);
 
     # Create a session ID for the user and log
-    my $session_id = get_session_id($uname, $ENV{REMOTE_ADDR});
+    my $session_id = generate_session_id(); # security pass 1 (A2): CSPRNG, not md5(user+ip)
     $coge->log_user( user => $user, session => $session_id );
 
 	# mdb added 10/19/12 - FIXME key/secret are hardcoded - wait: this will get replaced by openauth soon
@@ -633,6 +679,16 @@ sub parse_saml_response2 {
     }
 }
 
+# Security pass 1 (A1): decode a JWT base64url segment (URL-safe alphabet, padding
+# optional) to bytes. Standard decode_base64 mishandles '-' and '_'.
+sub _jwt_b64url_decode {
+    my ($s) = @_;
+    $s =~ tr{-_}{+/};
+    my $m = length($s) % 4;
+    $s .= '=' x (4 - $m) if $m;
+    return decode_base64($s);
+}
+
 # mdb added 9/23/15 - for API authentication with DE
 sub jwt_decode_token {
     my $token = shift;           # JWT token
@@ -646,16 +702,27 @@ sub jwt_decode_token {
         print STDERR "Web::jwt_decode_token ERROR: invalid token format\n";
         return;
     }
-    my $header = decode_json(decode_base64($header64));
-    my $claims = decode_json(decode_base64($claims64));
-    
+    # Security pass 1 (A1): decode the header/claims segments as base64url (JWT uses
+    # the URL-safe alphabet without padding), and fail closed if either segment is not
+    # valid base64url JSON instead of dying with a 500.
+    my $header = eval { decode_json(_jwt_b64url_decode($header64)) };
+    my $claims = eval { decode_json(_jwt_b64url_decode($claims64)) };
+    if ($@ || !$header || !$claims) {
+        print STDERR "Web::jwt_decode_token ERROR: malformed header/claims\n";
+        return;
+    }
+
     # Verify token header
     unless ($header) {
         print STDERR "Web::jwt_decode_token ERROR: missing header\n";
         return;
     }
-    unless ($header->{alg} && (uc($header->{alg}) eq 'RS256' || uc($header->{alg}) eq 'HS256')) {
-        print STDERR "Web::jwt_decode_token ERROR: unsupported algorithm, header=", Dumper $header, "\n";
+    # Security pass 1 (A1): pin the algorithm to RS256 only. This is an RSA public-key
+    # verification path; accepting HS256 here is an algorithm-confusion shape (an HMAC
+    # token verified against RSA material), so reject it outright rather than relying on
+    # the RSA verify to fail by accident.
+    unless ($header->{alg} && uc($header->{alg}) eq 'RS256') {
+        print STDERR "Web::jwt_decode_token ERROR: unsupported algorithm (RS256 required), header=", Dumper $header, "\n";
         return;
     }
     unless ($header->{typ} && (uc($header->{typ}) eq 'JWS' || uc($header->{typ}) eq 'JWT')) {
@@ -674,7 +741,14 @@ sub jwt_decode_token {
 #        print STDERR "Web::jwt_decode_token ERROR: early token, current_time=$current_time, claims=", Dumper $claims, "\n";
 #        return;
 #    }
-    if (defined($claims->{exp}) && $current_time > $claims->{exp}) {
+    # Security pass 1 (A1): require exp and enforce it. Previously a token that simply
+    # omitted exp never expired. (If a legitimate issuer is found to omit exp, relax to
+    # a bounded default here rather than making it optional again.)
+    unless (defined $claims->{exp}) {
+        print STDERR "Web::jwt_decode_token ERROR: missing exp claim\n";
+        return;
+    }
+    if ($current_time > $claims->{exp}) {
         print STDERR "Web::jwt_decode_token ERROR: expired token, current_time=$current_time, claims=", Dumper $claims, "\n";
         return;
     }
@@ -699,15 +773,27 @@ sub jwt_decode_token {
         return;
     }
     
-    # Verify the token signature using the public key
+    # Verify the token signature using the public key.
+    # Security pass 1 (A1): previously $valid was computed, printed, and DISCARDED --
+    # the function returned $claims unconditionally, so any signature (or none) was
+    # accepted. Now the result is tested and BOTH a false result and a verification
+    # error fail closed.
+    my $valid = 0;
     eval { # use eval to contain errors
         my $signed64 = "$header64.$claims64";
         my $rsa_pub = Crypt::OpenSSL::RSA->new_public_key($key_string);
         $rsa_pub->use_sha256_hash();
-        my $valid = $rsa_pub->verify($signed64, $signature);
-        print STDERR "Web::jwt_decode_token VALID=$valid\n";
+        $valid = $rsa_pub->verify($signed64, $signature);
+        1;
+    } or do {
+        print STDERR "Web::jwt_decode_token ERROR: signature verification failed: $@\n";
+        return;
     };
-    
+    unless ($valid) {
+        print STDERR "Web::jwt_decode_token ERROR: invalid signature\n";
+        return;
+    }
+
     return $claims;
 }
 
@@ -1061,8 +1147,12 @@ sub initialize_basefile {
     if ($basename) {
 
         #print STDERR "Have basename: $basename\n";
-        ($basename) = $basename =~ /([^\/].*$)/;
-        my ( $x, $cleanname ) = check_taint($basename);
+        # Security pass 1 (F3): the old regex /([^\/].*$)/ only rejected a LEADING slash,
+        # so '../../..' passed, and check_taint permitted '/', '.', '|' and quotes. The
+        # resulting basefile is opened for WRITE and used as a SQLite path. Reduce to a
+        # safe single filename component and reject anything else (no traversal).
+        my $cleanname = CoGe::Accessory::Validate::valid_filename($basename);
+        die "initialize_basefile: invalid basename '$basename'" unless defined $cleanname;
         $self->basefilename($cleanname);
         my $basefile = $tempdir . "/" . $cleanname;
         $basefile =~ s/\/\/+/\//g;
@@ -1100,6 +1190,29 @@ sub initialize_basefile {
         return $self->basefilename;
     }
     else { return $self; }
+}
+
+# Security pass 1 (R1): shell-free runner for the $HISTOGRAM tool, replacing the
+# ~11 duplicated `my $cmd = $HISTOGRAM; $cmd .= " -ht $hist_type"; `$cmd`;` blocks in
+# GenomeInfo.pl / GenomeList.pl / OrganismView.pl. Uses list-form system() so no shell
+# is involved (filenames/titles built from request or DB values can no longer inject),
+# and validates hist_type against the only two values the UI offers.
+#   run_histogram(bin => $HISTOGRAM, file => $f, out => $o, title => $t,
+#                 min => 0, max => 100, hist_type => $ht);  # min/max/hist_type optional
+sub run_histogram {
+    my %o = @_;
+    return unless defined $o{bin} && defined $o{file} && defined $o{out};
+    my @cmd = ($o{bin}, '-f', $o{file}, '-o', $o{out});
+    push @cmd, '-t', $o{title} if defined $o{title};
+    push @cmd, '-min', $o{min} if defined $o{min};
+    push @cmd, '-max', $o{max} if defined $o{max};
+    if (defined $o{hist_type} && length $o{hist_type}) {
+        my $ht = CoGe::Accessory::Validate::valid_enum($o{hist_type}, 'counts', 'percentage');
+        push @cmd, '-ht', $ht if defined $ht;   # silently ignore anything else
+    }
+    system(@cmd) == 0
+        or warn "Web::run_histogram: '$o{bin}' exited nonzero ($?)\n";
+    return;
 }
 
 sub gzip {
