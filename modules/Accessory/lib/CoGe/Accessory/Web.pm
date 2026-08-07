@@ -20,6 +20,8 @@ use HTML::Template;
 use LWP::Simple qw(!getprint !getstore !mirror);
 use LWP::UserAgent;
 use File::Listing qw(parse_dir);
+use Data::Validate::IP qw(is_ipv4 is_ipv6 is_public_ipv4 is_public_ipv6);
+use Socket qw(getaddrinfo getnameinfo SOCK_STREAM NI_NUMERICHOST NIx_NOSERV);
 use JSON;
 use HTTP::Request;
 use XML::Simple;
@@ -72,7 +74,7 @@ BEGIN {
     @ISA     = ( qw (Exporter Class::Accessor) );
     @EXPORT  = qw( generate_session_id gunzip gzip
                    send_email get_defaults set_defaults internal_url_for url_for internal_api_url_for api_url_for get_job 
-                   schedule_job render_template ftp_get_path ftp_get_file split_url
+                   schedule_job render_template ftp_get_path ftp_get_file split_url url_is_public_fetch_safe
                    parse_proxy_response jwt_decode_token add_user write_log log_history
                    download_url_for get_command_path get_tiny_link
                );
@@ -1494,15 +1496,75 @@ sub split_url {
     return ($filename, $filepath);
 }
 
+# §7.3 SSRF guard. Returns a canonical URL only if it is safe to fetch from the
+# server: an http/https/ftp URL whose host resolves *entirely* to public
+# (globally routable) addresses. Blocks loopback, RFC1918, link-local (incl. the
+# cloud metadata address 169.254.169.254), IPv6 loopback/link-local/unique-local,
+# and IPv4-mapped-in-IPv6 forms of the above. Returns undef on anything unsafe or
+# unresolvable. Callers must also disable redirects so a 3xx cannot bounce to an
+# internal host after this check.
+sub url_is_public_fetch_safe {
+    my ($url) = @_;
+    return unless defined $url && length $url;
+
+    my $uri = URI->new($url);
+    return unless $uri && $uri->can('scheme') && defined $uri->scheme;
+    return unless lc( $uri->scheme ) =~ /^(?:https?|ftp)$/;
+    my $host = eval { $uri->host };
+    return unless defined $host && length $host;
+
+    my ( $err, @res ) =
+      getaddrinfo( $host, '', { socktype => SOCK_STREAM } );
+    return if $err || !@res;
+
+    my $checked = 0;
+    for my $ai (@res) {
+        my ( $e2, $ip ) =
+          getnameinfo( $ai->{addr}, NI_NUMERICHOST, NIx_NOSERV );
+        return if $e2;
+        ( my $v4 = $ip ) =~ s/^::ffff://i;    # unwrap IPv4-mapped IPv6
+        if ( is_ipv4($v4) ) {
+            return unless is_public_ipv4($v4);
+        }
+        elsif ( is_ipv6($ip) ) {
+            return unless is_public_ipv6($ip);
+        }
+        else {
+            return;
+        }
+        $checked++;
+    }
+    return unless $checked;
+    return $uri->canonical->as_string;
+}
+
 sub ftp_get_path { # mdb 8/24/15 copied from LoadExperiment.pl
     my %opts = @_;
     my $url  = $opts{url};
 
+    # §7.3 Only fetch public URLs, and disable redirects so a redirect cannot
+    # escape to an internal host after the check above.
+    my $safe = url_is_public_fetch_safe($url);
+    unless ( defined $safe ) {
+        print STDERR "Web::ftp_get_path: refusing non-public or invalid url\n";
+        return;
+    }
+    $url = $safe;
+
+    my $ua = LWP::UserAgent->new;
+    $ua->max_redirect(0);
+    $ua->timeout(30);
+
     my @files;
 
-    my ($content_type, $size) = LWP::Simple::head($url);
+    my $head_resp = $ua->head($url);
+    return unless $head_resp && $head_resp->is_success; # 3xx -> not success -> refuse
+    my $content_type = $head_resp->header('Content-Type');
+    my $size         = $head_resp->header('Content-Length');
     if ($content_type && $content_type eq 'text/ftp-dir-listing') { # directory
-        my $listing = get($url);
+        my $get_resp = $ua->get($url);
+        return unless $get_resp && $get_resp->is_success;
+        my $listing = $get_resp->decoded_content;
         my $dir     = parse_dir($listing);
         foreach (@$dir) {
             my ( $filename, $filetype, $filesize, $filetime, $filemode ) = @$_;
@@ -1568,8 +1630,17 @@ sub ftp_get_file { # mdb 8/24/15 copied from LoadExperiment.pl
     #           # XXX Should really do something with the chunk itself
     #       });
 
+    # §7.3 SSRF guard: only fetch public URLs.
+    my $safe = url_is_public_fetch_safe($url);
+    unless ( defined $safe ) {
+        print STDERR "Web::ftp_get_file: refusing non-public or invalid url\n";
+        return;
+    }
+    $url = $safe;
+
     # Current method (allows optional login)
     my $ua = new LWP::UserAgent;
+    $ua->max_redirect(0); # §7.3 no redirect bounce to internal hosts
     my $request = HTTP::Request->new( GET => $url );
     $request->authorization_basic( $username, $password )
       if ( $username and $password );

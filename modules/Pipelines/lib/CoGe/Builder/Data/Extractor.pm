@@ -9,7 +9,7 @@ use File::Spec::Functions qw(catfile catdir);
 use String::ShellQuote qw(shell_quote);
 
 use CoGe::Accessory::Utils;
-use CoGe::Accessory::Web qw(split_url get_command_path);
+use CoGe::Accessory::Web qw(split_url get_command_path url_is_public_fetch_safe);
 use CoGe::Accessory::IRODS qw(irods_iget irods_set_env);
 use CoGe::Core::Storage qw(get_upload_path);
 use CoGe::Exception::Generic;
@@ -171,6 +171,13 @@ sub ftp_get {
     my $username = $params{username} // '';
     my $password = $params{password} // '';
     my $dest_path = $params{dest_path};
+
+    # §7.3 SSRF guard: the worker will fetch this URL, so reject any host that
+    # resolves to a non-public address (loopback / RFC1918 / link-local incl.
+    # cloud metadata) before building the task.
+    unless ( defined url_is_public_fetch_safe($url) ) {
+        CoGe::Exception::Generic->throw(message => "Refusing to fetch non-public URL");
+    }
     
     my ($filename, $path) = split_url($url);
     my $output_file = catfile($dest_path, $path, $filename);
