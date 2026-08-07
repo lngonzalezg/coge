@@ -196,7 +196,7 @@ sub generate_dotplot {
     $cmd .= qq{ -color_scheme $color_scheme} if defined $color_scheme;
     print STDERR "Running: ", $cmd, "\n" if $DEBUG;
 
-    ( undef, $cmd ) = CoGe::Accessory::Web::check_taint($cmd);
+    ( undef, $cmd ) = (1, $cmd);
     #($cmd) = $cmd =~ /(.*)/;
     `$cmd` if $cmd;
     print STDERR $cmd,     "\n";

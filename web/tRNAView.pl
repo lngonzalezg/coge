@@ -242,7 +242,7 @@ sub run_aragorn {
 
     $precommand .= "-o $outfile $fasta_file";
     my $x;
-    ( $x, $precommand ) = CoGe::Accessory::Web::check_taint($precommand);
+    ( $x, $precommand ) = (1, $precommand);
 
     my $command = "$ARAGORN $precommand";
 

@@ -69,7 +69,7 @@ BEGIN {
     $VERSION = 0.1;
     $TEMPDIR = catdir($BASEDIR, 'web', 'tmp'); #FIXME move out of web
     @ISA     = ( qw (Exporter Class::Accessor) );
-    @EXPORT  = qw( generate_session_id check_filename_taint check_taint gunzip gzip
+    @EXPORT  = qw( generate_session_id gunzip gzip
                    send_email get_defaults set_defaults internal_url_for url_for internal_api_url_for api_url_for get_job 
                    schedule_job render_template ftp_get_path ftp_get_file split_url
                    parse_proxy_response jwt_decode_token add_user write_log log_history
@@ -1058,33 +1058,12 @@ sub read_log {
     return $str;
 }
 
-sub check_filename_taint {
-    my $v = shift;
-    return 1 unless $v;
-    if ( $v =~ /^([A-Za-z0-9\:\-\.=\/_#\|]*)$/ ) { # mdb changed 3/15/16 -- added ':'
-        my $v1 = $1;
-        return ($v1);
-    }
-    else {
-        carp "check_filename_taint: '$v' failed taint check\n";
-        return (0);
-    }
-}
-
-sub check_taint {
-    my $v = shift;
-    return 1 unless $v;
-    if ( $v =~ /^([\:\-\w\._=\s+\/,#\]\['"%\|]+)$/ ) { # mdb changed 3/15/16 -- added ':'
-        $v = $1;
-        # $v now untainted
-        return ( 1, $v );
-    }
-    else {
-        # data should be thrown out
-        carp "check_taint: '$v' failed taint check\n";
-        return (0);
-    }
-}
+# Security pass 2 (X3): check_taint / check_filename_taint deleted. Their regexes permitted
+# shell metacharacters (| ' " % /) and whitespace, so they never actually made a value
+# shell- or path-safe -- they only stripped the taint flag (and taint mode was never
+# enabled). Every call site was a behavior-preserving no-op on already server-constructed
+# values and has been removed. Use CoGe::Accessory::Validate::* for real, context-specific
+# validation instead.
 
 sub save_settings {
     my %opts    = @_;

@@ -676,7 +676,7 @@ sub get_results {
     my $opts;
     my $pre_command;
     my $x;
-    ( $x, $pre_command ) = CoGe::Accessory::Web::check_taint($pre_command);
+    ( $x, $pre_command ) = (1, $pre_command);
     my @results;
     my $count = 1;
     my $t2    = new Benchmark;
@@ -1185,18 +1185,18 @@ qq{<span class=small>Hits colored by Identity.  <span style="color:#AA0000">Min:
                   . "_$count"
                   . "_large.png";
                 ( $x, $large_image_file ) =
-                  CoGe::Accessory::Web::check_taint($large_image_file);
+                  (1, $large_image_file);
                 $image_file =
                   $cogeweb->basefile . "_" . $hsp_type . "_$count.png";
                 ( $x, $image_file ) =
-                  CoGe::Accessory::Web::check_taint($image_file);
+                  (1, $image_file);
                 $data{$org}{image}->generate_png( filename => $image_file );
                 $image_map =
                   $data{$org}{image}->generate_imagemap(
                     mapname => $cogeweb->basefilename . "_" . $count );
                 my $map_file = $cogeweb->basefile . "_$count.$hsp_type.map";
                 ( $x, $map_file ) =
-                  CoGe::Accessory::Web::check_taint($map_file);
+                  (1, $map_file);
                 open( MAP, ">", "$map_file" );
                 print MAP $image_map;
                 close MAP;
@@ -1211,7 +1211,7 @@ qq{<span class=small>Hits colored by Identity.  <span style="color:#AA0000">Min:
                       . "_large" );
                 $map_file = $cogeweb->basefile . "_$count.$hsp_type.large.map";
                 ( $x, $map_file ) =
-                  CoGe::Accessory::Web::check_taint($map_file);
+                  (1, $map_file);
                 open( MAP, ">", "$map_file" );
                 print MAP $image_map_large;
                 close MAP;
@@ -1226,9 +1226,9 @@ qq{<span class=small>Hits colored by Identity.  <span style="color:#AA0000">Min:
                 $image_map_large =
                   get_map( $cogeweb->basefile . "_$count.$hsp_type.large.map" );
                 ( $x, $image_file ) =
-                  CoGe::Accessory::Web::check_taint($image_file);
+                  (1, $image_file);
                 ( $x, $large_image_file ) =
-                  CoGe::Accessory::Web::check_taint($large_image_file);
+                  (1, $large_image_file);
             }
 
             $image_file       =~ s/$TEMPDIR/$TEMPURL/;

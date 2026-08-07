@@ -242,7 +242,7 @@ sub generate_chromosome_images {
                 my $x;
                 $image_file = $cogeweb->basefile . "_$count.png";
                 ( $x, $image_file ) =
-                  CoGe::Accessory::Web::check_taint($image_file);
+                  (1, $image_file);
 
                 $data{$org}{image}->image_width($width);
                 $data{$org}{image}->chromosome_height($height);
@@ -253,7 +253,7 @@ sub generate_chromosome_images {
                     mapname => $cogeweb->basefilename . "_" . $count );
                 my $map_file = $cogeweb->basefile . "_$count.map";
                 ( $x, $map_file ) =
-                  CoGe::Accessory::Web::check_taint($map_file);
+                  (1, $map_file);
                 open( MAP, ">", "$map_file" );
                 print MAP $image_map;
                 close MAP;
@@ -264,7 +264,7 @@ sub generate_chromosome_images {
                 $image_map  = get_map( $cogeweb->basefile . "_$count.map" );
                 #print STDERR $image_map_large,"\n";
                 ( $x, $image_file ) =
-                  CoGe::Accessory::Web::check_taint($image_file);
+                  (1, $image_file);
             }
 
             $image_file =~ s/$TEMPDIR/$TEMPURL/;

@@ -289,7 +289,7 @@ sub run {
     #$pre_command .= " -NUMITER=$num_interations";
 
     my $x;
-    ( $x, $pre_command ) = CoGe::Accessory::Web::check_taint($pre_command);
+    ( $x, $pre_command ) = (1, $pre_command);
 
     my $command = "$CLUSTAL $pre_command";
 

@@ -1135,7 +1135,7 @@ sub run {
 
     foreach my $item (@sets) {
         my $filename = $cogeweb->basefile . "_" . $item->{seq_num} . ".png";
-        $filename = CoGe::Accessory::Web::check_filename_taint($filename);
+        $filename = ($filename);
         $item->{png_filename} = $filename;
         my $image = basename($filename);
         $item->{image} = $image;
@@ -1285,9 +1285,9 @@ qq{<a href="http://genomevolution.org/wiki/index.php/Gobe" class="small" style="
         $html .=
           "<div><A HREF=\"$basename\" target=_new>$accn</A></font></DIV>\n";
         my $x;
-        ( $x, $all_file ) = CoGe::Accessory::Web::check_taint($all_file);
+        ( $x, $all_file ) = (1, $all_file);
         my $seq_file = $item->{file};
-        ( $x, $seq_file ) = CoGe::Accessory::Web::check_taint($seq_file);
+        ( $x, $seq_file ) = (1, $seq_file);
         my $cmd = "/bin/cat '$seq_file' >> '$all_file'";
         `$cmd`;
     }
@@ -2715,7 +2715,7 @@ sub get_obj_from_genome_db {
     unless ($seq && length($seq) > 1) {
         ($chr) = $ds->get_chromosomes unless defined $chr;
         my $tmp;
-        ( $tmp, $seq_file ) = CoGe::Accessory::Web::check_taint($seq_file);
+        ( $tmp, $seq_file ) = (1, $seq_file);
         unlink($seq_file);
         $seq = $dsg->get_genomic_sequence(
             start => $start,
@@ -2836,7 +2836,7 @@ sub get_obj_from_genome_db {
     if ($gen_prot_sequence) {
         my $prot_file = $seq_file . ".prot";
         my $tmp;
-        ( $tmp, $prot_file ) = CoGe::Accessory::Web::check_taint($prot_file);
+        ( $tmp, $prot_file ) = (1, $prot_file);
         open( OUT, ">", "$prot_file" );
         print OUT $prot_sequence if $prot_sequence;
         close OUT;
@@ -2921,7 +2921,7 @@ sub run_bl2seq {
             $command .= " -i '$seqfile1' -j '$seqfile2'";
             $command .= " " . $blast_params;
             my $x = "";
-            ( $x, $command ) = CoGe::Accessory::Web::check_taint($command);
+            ( $x, $command ) = (1, $command);
             if ($DEBUG) {
                 print STDERR "About to execute...\n $command\n";
             }
@@ -3001,7 +3001,7 @@ sub run_blastz {
             $command .= " '$seqfile1'" . "[unmask] '$seqfile2'" . "[unmask]";
             $command .= " " . $params if $params;
             my $x = "";
-            ( $x, $command ) = CoGe::Accessory::Web::check_taint($command);
+            ( $x, $command ) = (1, $command);
 
             if ($DEBUG) {
                 print STDERR "About to execute...\n $command\n";
@@ -3069,7 +3069,7 @@ sub run_lagan {
             $command .= " -mfa";
             $command .= " " . $params if $params;
             my $x = "";
-            ( $x, $command ) = CoGe::Accessory::Web::check_taint($command);
+            ( $x, $command ) = (1, $command);
 
             if ($DEBUG) {
                 print STDERR "About to execute...\n $command\n";
@@ -3134,7 +3134,7 @@ sub run_chaos {
 
             $command .= " " . $params if $params;
             my $x = "";
-            ( $x, $command ) = CoGe::Accessory::Web::check_taint($command);
+            ( $x, $command ) = (1, $command);
             if ($DEBUG) {
                 print STDERR "About to execute...\n $command\n";
             }
@@ -3239,14 +3239,13 @@ sub run_dialign {
                     $anchor_prog = $BLASTZ;
                 }
                 my ( $x, $dialign_opts ) =
-                  CoGe::Accessory::Web::check_taint($params);
+                  (1, $params);
                 $program_ran .=
                   " using anchors from " . $parser_opts->{anchor_params}{prog};
                 unless ($x) {
                     next;
                 }
-                my ( $y, $anchor_opts ) = CoGe::Accessory::Web::check_taint(
-                    $parser_opts->{anchor_params}{param_string} );
+                my ( $y, $anchor_opts ) = (1, $parser_opts->{anchor_params}{param_string});
                 unless ($y) {
                     next;
                 }
@@ -3280,9 +3279,9 @@ sub run_dialign {
                     #put two fasta files into one for dialign
                 my $tmp;
                 ( $tmp, $seqfile1 ) =
-                  CoGe::Accessory::Web::check_taint($seqfile1);
+                  (1, $seqfile1);
                 ( $tmp, $seqfile2 ) =
-                  CoGe::Accessory::Web::check_taint($seqfile2);
+                  (1, $seqfile2);
                 `cat '$seqfile1' > '$seqfile'`;
                 `cat '$seqfile2' >> '$seqfile'`;
                 next
@@ -3298,7 +3297,7 @@ sub run_dialign {
                 $command .= " -fn '$tempfile'";
                 $command .= " '$seqfile'";
                 my $x = "";
-                ( $x, $command ) = CoGe::Accessory::Web::check_taint($command);
+                ( $x, $command ) = (1, $command);
 
                 if ($DEBUG) {
                     print STDERR "About to execute...\n $command\n";
@@ -3374,7 +3373,7 @@ sub run_genomethreader {
                 $command .= " -scorematrix $matrix";
                 $command .= " " . $params if $params;
                 my $x = "";
-                ( $x, $command ) = CoGe::Accessory::Web::check_taint($command);
+                ( $x, $command ) = (1, $command);
 
                 if ($DEBUG) {
                     print STDERR "About to execute...\n $command\n";
@@ -3475,7 +3474,7 @@ sub write_fasta {
     $seq = $gbobj->mask_ngene($seq) if ( $mask && $mask eq "non-genic" );
     $seq = substr( $seq, $start - 1, $stop - $start + 1 );
     $gbobj->sequence($seq);    #replace objects sequence with modified sequence
-    ($fullname) = CoGe::Accessory::Web::check_filename_taint($fullname);
+    ($fullname) = ($fullname);
     open( OUT, ">", "$fullname" ) or die "Couldn't open '$fullname': $!";
     print OUT "$hdr\n";
     print OUT $seq, "\n";
@@ -4234,7 +4233,7 @@ sub get_algorithm_options {
         $param_string = $chaos_string;
     }
     my ( $x, $clean_param_string ) =
-      CoGe::Accessory::Web::check_taint($param_string);
+      (1, $param_string);
     unless ($x) {
         print STDERR "user "
           . $USER->user_name

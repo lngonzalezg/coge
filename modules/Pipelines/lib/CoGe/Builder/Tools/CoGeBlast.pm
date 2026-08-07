@@ -76,7 +76,7 @@ sub add_jobs {
     my ( $fasta_file, $query_seqs_info ) = create_fasta_file($seq, $cogeweb);
     my $pre_command;
     my $x;
-    ( $x, $pre_command ) = CoGe::Accessory::Web::check_taint($pre_command);
+    ( $x, $pre_command ) = (1, $pre_command);
     my @results;
     my $count = 1;
 
