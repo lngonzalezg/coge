@@ -49,6 +49,7 @@ sub pre_build { # override superclass method for reusable workflow ID, custom si
 
 	# Set site_url attribute
 	my %opts = ( %{ defaults() }, %{ $self->params } );
+	_sanitize_synmap_opts( \%opts ); # audit §4.3.3
 	$self->site_url( $opts{tinylink} || get_query_link( $self->conf, $self->db, %opts ) );
 	my $requester = $self->request->requester;
     if ($requester) { # request is from internal web page - external API requests will not have a 'requester' field
@@ -1236,6 +1237,33 @@ sub build1x1 {
 	$self->workflow->log( "" );
 }
 
+# Audit §4.3.3: normalize the client-overridable %opts keys that are interpolated into
+# shell command lines / the blast command name. Numeric keys that fail validation are
+# removed (so downstream `|| default` / `if defined` guards apply); string keys are
+# restricted to word/dot/dash (no shell metacharacters); path keys additionally reject
+# traversal. SynMap is authRequired=0, so this runs for anonymous submissions too.
+sub _sanitize_synmap_opts {
+	my $opts = shift;
+	my $int_re   = qr/^\d+$/;
+	my $float_re = qr/^\d+(?:\.\d+)?(?:[eE][-+]?\d+)?$/;
+	for my $k (qw(tdd csco D A g gm Dm blast color_type color_scheme ks_type
+	              depth_overlap width min_chr_size fid1 fid2
+	              fb_window_size fb_numtargetchr fb_numquerychr)) {
+		delete $opts->{$k} if defined $opts->{$k} && $opts->{$k} !~ $int_re;
+	}
+	for my $k (qw(blast_option depth_org_1_ratio depth_org_2_ratio)) {
+		delete $opts->{$k} if defined $opts->{$k} && $opts->{$k} !~ $float_re;
+	}
+	for my $k (qw(axis_metric chr_sort_order axis_relationship merge_algo depth_algo)) {
+		delete $opts->{$k} if defined $opts->{$k} && $opts->{$k} !~ /^[\w.\-]+$/;
+	}
+	for my $k (qw(query_dup_files subject_dup_files)) {
+		delete $opts->{$k} if defined $opts->{$k}
+			&& ( $opts->{$k} !~ m{^[\w.\-/]+$} || $opts->{$k} =~ /\.\./ );
+	}
+	return $opts;
+}
+
 sub get_blast_config {
 	my $config = shift;
 	my $blast  = shift;
@@ -1314,6 +1342,7 @@ sub build {
 	for (my $j=1; $j<$i-1; $j++) {
 		for (my $k=$j+1; $k<$i; $k++) {
 			my %opts = ( %{ defaults() }, %{ $self->params } );
+			_sanitize_synmap_opts( \%opts ); # audit §4.3.3
             $opts{genome_id1} = $genome_ids[$j - 1];
 			$opts{genome_id2} = $genome_ids[$k - 1];
 
