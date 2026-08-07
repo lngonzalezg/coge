@@ -1663,7 +1663,7 @@ sub get_user_jobs_table {
 sub get_user_jobs {
 	my %opts = @_;
     my $user_id = $opts{user_id};
-	my $user_jobs = $db->storage->dbh->selectall_arrayref("SELECT DATE(time),page,COUNT(*) FROM log WHERE user_id=" . $user_id . " AND type != 0 AND page IN ('API','CoGeBlast','GEvo','LoadAnnotation','LoadExperiment','LoadExp+','LoadGenome','SynFind','SynMap','SynMap2','SynMap3D') GROUP BY DATE(time),page");
+	my $user_jobs = $db->storage->dbh->selectall_arrayref("SELECT DATE(time),page,COUNT(*) FROM log WHERE user_id=? AND type != 0 AND page IN ('API','CoGeBlast','GEvo','LoadAnnotation','LoadExperiment','LoadExp+','LoadGenome','SynFind','SynMap','SynMap2','SynMap3D') GROUP BY DATE(time),page", undef, $user_id);
 	my %jobs;
 	foreach (@$user_jobs) {
 		my $job = $jobs{$_->[1]};

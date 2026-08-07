@@ -743,7 +743,7 @@ sub search_lists
         # Get public lists and user's private lists
         $search_term = '%' . $search_term . '%';
         foreach my $notebook (
-            $DB->resultset("List")->search_literal("locked=0 AND (name LIKE '$search_term' OR description LIKE '$search_term')"
+            $DB->resultset("List")->search_literal('locked=0 AND (name LIKE ? OR description LIKE ?)', $search_term, $search_term
             )
           )
         {

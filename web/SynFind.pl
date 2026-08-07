@@ -523,7 +523,7 @@ sub search_lists {   # FIXME this coded is dup'ed in User.pl and NotebookView.pl
     if ($search_term) {
         # Get public lists and user's private lists
         $search_term = '%' . $search_term . '%';
-        foreach my $notebook ($coge->resultset("List")->search_literal("locked=0 AND (name LIKE '$search_term' OR description LIKE '$search_term')"))
+        foreach my $notebook ($coge->resultset("List")->search_literal('locked=0 AND (name LIKE ? OR description LIKE ?)', $search_term, $search_term))
         {
             next unless $USER->has_access_to_notebook($notebook);
             push @notebooks, $notebook;

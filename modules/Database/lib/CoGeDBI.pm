@@ -589,11 +589,11 @@ sub get_features_by_range { # for JBrowse::Annotation
                 JOIN location l ON f.feature_id = l.feature_id
                 JOIN feature_name fn ON f.feature_id = fn.feature_id
                 JOIN feature_type ft ON f.feature_type_id = ft.feature_type_id
-                WHERE g.genome_id = $gid AND f.chromosome = '$chr'
+                WHERE g.genome_id = ? AND f.chromosome = ?
         };
 
         my $sth = $dbh->prepare($query);
-        $sth->execute();
+        $sth->execute($gid, $chr);
         $results = $sth->fetchall_arrayref({});
 
         # Store the results in the cache

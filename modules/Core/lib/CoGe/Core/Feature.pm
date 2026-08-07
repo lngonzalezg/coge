@@ -40,7 +40,7 @@ sub search_features {
         @results = $db->resultset('FeatureName')->search({'me.name' => $search_term}, $prefetch);
     }
     else { # fuzzy match (full-text search)
-        @results = $db->resultset('FeatureName')->search(undef, $prefetch)->search_literal( "MATCH(me.name) AGAINST ('\"$search_term\"')" );
+        @results = $db->resultset('FeatureName')->search(undef, $prefetch)->search_literal( 'MATCH(me.name) AGAINST (?)', $search_term );
     }
     
     my %features;

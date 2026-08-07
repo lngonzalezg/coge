@@ -218,13 +218,13 @@ SELECT count(distinct(feature_id)), ft.name, ft.feature_type_id
   FROM feature
   JOIN feature_type ft using (feature_type_id)
   JOIN dataset_connector dc using (dataset_id)
- WHERE genome_id = $dsgid
+ WHERE genome_id = ?
   GROUP BY ft.name
 };
 
     my $dbh = $DB->storage->dbh;  #DBI->connect( $connstr, $DBUSER, $DBPASS );
     my $sth = $dbh->prepare($query);
-    $sth->execute;
+    $sth->execute($dsgid);
     my $feats = {};
     while ( my $row = $sth->fetchrow_arrayref ) {
         my $name = $row->[1];
