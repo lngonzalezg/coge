@@ -64,7 +64,17 @@ $LIST_TYPE = $coge->resultset('ListType')->find_or_create( { name => 'genome' } 
     get_gc_for_feature_type  => \&get_gc_for_feature_type,
 );
 
-CoGe::Accessory::Web->dispatch( $FORM, \%FUNCTION, \&gen_html );
+# Security pass 2 (Z3/X2): deny-by-default gate. Reads/exports 'public', writes 'user'.
+# Per-item read-authz remains a handler-level audit. Undeclared => admin-only (fail closed).
+my %ACCESS = (
+    gen_html => 'public', get_feature_counts => 'public', get_gc => 'public',
+    get_aa_usage => 'public', get_codon_usage => 'public', gc_content => 'public',
+    gen_data => 'public', send_to_xls => 'public', send_to_csv => 'public',
+    send_to_fasta => 'public', send_to_msa => 'public', send_to_blast => 'public',
+    get_wobble_gc => 'public', cds_wgc_hist => 'public', get_gc_for_feature_type => 'public',
+    send_to_list => 'user', add_to_user_history => 'user',
+);
+CoGe::Accessory::Web->dispatch( $FORM, \%FUNCTION, \&gen_html, { map => \%ACCESS, user => $USER } );
 
 sub gen_html {
     my $html;

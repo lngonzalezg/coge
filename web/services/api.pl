@@ -7,6 +7,7 @@ use Mojo::Log;
 use Data::Dumper;
 
 use CoGe::Accessory::Web qw(get_defaults);
+use CoGe::Services::Auth; # security pass 2 (X4): for the before_dispatch write-gate
 print STDERR '=' x 80, "\n== CoGe API\n", '=' x 80, "\n";
 print STDERR "Home path: ", get_defaults->{_HOME_PATH}, "\n";
 print STDERR "Config file: ", get_defaults->{_CONFIG_PATH}, "\n";
@@ -35,14 +36,30 @@ app->secrets('coge'); # it's okay to have this secret in the code (rather the co
 # Instantiate router
 my $r = app->routes->namespaces(["CoGe::Services::API::JBrowse", "CoGe::Services::API"]);
 
-# TODO: Authenticate user here instead of redundantly in each submodule
-#    my $app = $self;
-#    $self->hook(before_dispatch => sub {
-#        my $c = shift;
-#        # Authenticate user and connect to the database
-#        my ($db, $user, $conf) = CoGe::Services::Auth::init($app);
-#        $c->stash(db => $db, user => $user, conf => $conf);
-#    });
+# Security pass 2 (X4): deny-by-default gate for the WRITE surface. Every mutating
+# request (PUT/POST/DELETE) must be authenticated, EXCEPT the two operations that are
+# legitimately public and enforce their own finer rules: job submission (/jobs — Job.pm
+# add() applies per-type authRequired + has_access) and genome export (/export, a
+# public-data read triggered via PUT). GET reads are left to each controller's existing
+# `restricted`/ownership checks. This closes the "a forgotten check is invisible" gap for
+# writes without a blanket flip of all ~97 routes. Controllers still authenticate
+# themselves; this is an additional, earlier gate (and stashes the auth for future use).
+app->hook(before_dispatch => sub {
+    my $c = shift;
+    my $method = uc($c->req->method || '');
+    return unless $method eq 'PUT' || $method eq 'POST' || $method eq 'DELETE';
+
+    my $path = $c->req->url->path->to_string || '';
+    return if $path =~ m{(^|/)jobs/?$};   # job submission: per-type auth in controller
+    return if $path =~ m{/export/?$};     # public-genome export
+
+    my ($db, $user, $conf) = CoGe::Services::Auth::init($c);
+    unless ($user) {
+        $c->render(json => { error => { Auth => "Access denied" } }, status => 401);
+        return;
+    }
+    $c->stash(db => $db, user => $user, conf => $conf);
+});
 
 # Couldn't get override of render_exception in Jobs controller working as advertised so used
 # this hook as a workaround.  Without this the default html error template is rendered

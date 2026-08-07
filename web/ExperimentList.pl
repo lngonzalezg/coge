@@ -51,7 +51,14 @@ $URL       = $P->{URL};
     add_to_user_history    => \&add_to_user_history,
 );
 
-CoGe::Accessory::Web->dispatch( $FORM, \%FUNCTION, \&gen_html );
+# Security pass 2 (Z3/X2): deny-by-default gate. Reads 'public', writes 'user'.
+# Per-item read-authz remains a handler-level audit. Undeclared => admin-only (fail closed).
+my %ACCESS = (
+    gen_html => 'public', get_feature_counts => 'public', send_to_xls => 'public',
+    send_to_csv => 'public', gen_data => 'public',
+    send_to_list => 'user', add_to_user_history => 'user',
+);
+CoGe::Accessory::Web->dispatch( $FORM, \%FUNCTION, \&gen_html, { map => \%ACCESS, user => $USER } );
 
 sub gen_html {
     my $html;

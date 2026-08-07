@@ -55,7 +55,18 @@ $TEMPURL   = $P->{TEMPURL} . 'FeatList/' . $USER->id;
     send_to_list           => \&send_to_list,
 );
 
-CoGe::Accessory::Web->dispatch( $FORM, \%FUNCTION, \&gen_html );
+# Security pass 2 (Z3/X2): deny-by-default gate. Reads/exports are 'public' (they operate
+# on client-selected items; per-item read-authz is a separate handler-level audit), writes
+# to user state ('user') require login. Undeclared functions fail closed (admin-only).
+my %ACCESS = (
+    send_to_gevo => 'public', send_to_blast => 'public', send_to_fasta => 'public',
+    send_to_xls => 'public', codon_table => 'public', protein_table => 'public',
+    gc_content => 'public', gen_data => 'public', send_to_featmap => 'public',
+    send_to_msa => 'public', send_to_featlist => 'public', get_anno => 'public',
+    get_gc => 'public', get_wobble_gc => 'public',
+    add_to_user_history => 'user', send_to_list => 'user',
+);
+CoGe::Accessory::Web->dispatch( $FORM, \%FUNCTION, \&gen_html, { map => \%ACCESS, user => $USER } );
 
 sub gen_html {
     my ($body) = gen_body();
