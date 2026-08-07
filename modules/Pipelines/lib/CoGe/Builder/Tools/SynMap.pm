@@ -1246,10 +1246,16 @@ sub _sanitize_synmap_opts {
 	my $opts = shift;
 	my $int_re   = qr/^\d+$/;
 	my $float_re = qr/^\d+(?:\.\d+)?(?:[eE][-+]?\d+)?$/;
-	for my $k (qw(tdd csco D A g gm Dm blast color_type color_scheme ks_type
+	for my $k (qw(tdd csco D A g gm Dm blast color_type color_scheme
 	              depth_overlap width min_chr_size fid1 fid2
 	              fb_window_size fb_numtargetchr fb_numquerychr)) {
 		delete $opts->{$k} if defined $opts->{$k} && $opts->{$k} !~ $int_re;
+	}
+	# ks_type is an enum (0|ks|kn|kn_ks), not an integer -- it selects the
+	# Ks/Kn substitution-rate colouring. Keep it word-constrained (shell-safe)
+	# but do not require digits, or the Ks/Kn feature silently stops running.
+	if ( defined $opts->{ks_type} && $opts->{ks_type} !~ /^(?:0|ks|kn|kn_ks)$/ ) {
+		delete $opts->{ks_type};
 	}
 	for my $k (qw(blast_option depth_org_1_ratio depth_org_2_ratio)) {
 		delete $opts->{$k} if defined $opts->{$k} && $opts->{$k} !~ $float_re;
