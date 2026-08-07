@@ -68,6 +68,29 @@ sub add_jobs {
     my $seq = $opts{seq};
     my $blastable = $opts{blastable};
 
+    # Audit §4.3.2: these params are interpolated into the JEX blast command args, which
+    # run via /bin/sh on the worker. The `shorten` flag basenames absolute PATHS only, so
+    # it does not protect a non-path value like "8 ; id". Validate each to its grammar:
+    # numeric params that fail are dropped; program (which also flows into the output
+    # filename and a `>` redirect) is required and must be one of the known keys.
+    # (gapcost/match_score are already regex-extracted to digits below, so they are safe.)
+    my $int_re   = qr/^\d+$/;
+    my $float_re = qr/^\d+(?:\.\d+)?(?:[eE][-+]?\d+)?$/;
+    $wordsize       = undef unless defined $wordsize       && $wordsize       =~ $int_re;
+    $outfmt         = undef unless defined $outfmt         && $outfmt         =~ $int_re;
+    $expect         = undef unless defined $expect         && $expect         =~ $float_re;
+    $zwordsize      = undef unless defined $zwordsize      && $zwordsize      =~ $int_re;
+    $zgap_start     = undef unless defined $zgap_start     && $zgap_start     =~ $int_re;
+    $zgap_extension = undef unless defined $zgap_extension && $zgap_extension =~ $int_re;
+    $zchaining      = undef unless defined $zchaining      && $zchaining      =~ $int_re;
+    $zthreshold     = undef unless defined $zthreshold     && $zthreshold     =~ $int_re;
+    $zmask          = undef unless defined $zmask          && $zmask          =~ $int_re;
+    $matrix         = undef unless defined $matrix         && $matrix         =~ /^[\w.\-]+$/;
+    unless ( defined $program && exists $BLAST_PROGS->{$program} ) {
+        warn "CoGeBlast: rejecting invalid blast program '" . ( defined $program ? $program : '' ) . "'\n";
+        return;
+    }
+
     # add jobs
     my @dsg_ids = split( /,/, $blastable );
 

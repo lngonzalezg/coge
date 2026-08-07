@@ -212,11 +212,19 @@ sub post_build {
         }
     }
 
-    # Add task to send notification to callback url
-    if ( $self->params->{callback_url} ) {
-        $self->add_to_all(
-            $self->curl_get( url => $self->params->{callback_url} )
-        );
+    # Add task to send notification to callback url.
+    # Audit §4.3.1: callback_url was raw-interpolated into a shell `curl` command (RCE on
+    # the JEX worker, for EVERY job type, unauthenticated). Only honor a clean http(s) URL
+    # with no shell metacharacters; skip (do not build the task) otherwise. curl_get also
+    # shell-quotes the URL as defense in depth. (SSRF hardening of this URL is tracked
+    # separately in §7.3.)
+    if ( my $cb = $self->params->{callback_url} ) {
+        if ( $cb =~ m{^https?://[^\s"'`\\;|&<>\$()]+$} ) {
+            $self->add_to_all( $self->curl_get( url => $cb ) );
+        }
+        else {
+            warn "Buildable: refusing malformed callback_url\n";
+        }
     }
 }
 
@@ -473,9 +481,10 @@ sub curl_get {
 
     my $cmd = get_command_path('CURL');
     my $output_file = catfile($self->staging_dir, 'curl_output.log');
+    my $safe_url = shell_quote($url); # audit §4.3.1: defense in depth (caller also validates)
 
     return {
-        cmd => "$cmd -s -o $output_file $url",
+        cmd => "$cmd -s -o $output_file $safe_url",
         args => [],
         inputs => [],
         outputs => [ $output_file ],
