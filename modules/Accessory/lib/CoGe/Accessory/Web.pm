@@ -1318,18 +1318,24 @@ sub send_email {
     my $to      = $opts{to};
     my $subject = $opts{subject};
     my $body    = $opts{body};
+    my $content_type = $opts{content_type}; # optional, e.g. 'text/html; charset=ISO-8859-1'
     return unless ($from and $to and $subject);
 
-    print STDERR "Sending email: from=$from to=$to subject=$subject\nbody:\n$body\n";
+    # §7.4 Mail header values must be single-line. A newline in from/to/subject
+    # would let a caller -- including the user-supplied 'email' job param that
+    # round-trips through send_email.pl's unescape() -- inject extra headers
+    # (Bcc/To), forge the subject, or start an alternate body (SMTP header
+    # injection, turning the host into an SPF-valid relay). Collapse CR/LF.
+    s/[\r\n]+/ /g for ($from, $to, $subject);
+    $content_type =~ s/[\r\n]+/ /g if defined $content_type;
+
+    print STDERR "Sending email: from=$from to=$to subject=$subject\n";
+
+    my %headers = ( From => $from, To => $to, Subject => $subject );
+    $headers{'Content-Type'} = $content_type if $content_type; # §7.4 set HTML type via a real header, not by smuggling \n into Subject
 
     my $mailer = Mail::Mailer->new("sendmail");
-    $mailer->open(
-        {
-            From    => $from,
-            To      => $to,
-            Subject => $subject,
-        }
-    ) or die "Can't open: $!\n";
+    $mailer->open( \%headers ) or die "Can't open: $!\n";
 
     print $mailer $body;
     $mailer->close();

@@ -16,7 +16,12 @@ sub add {
     my $self = shift;
     my $payload = shift; # allow special payload to be passed in from other controllers
     my $json = $self->req->body; #$self->req->json; # mdb replaced 11/30/16 -- req->json hides JSON errors, doing conversion manually prints them to STDERR
-    warn "CoGe::Services::API::Job::add\n", Dumper $payload, Dumper $json;
+    # §7.4 The payload/body carries FTP passwords and auth tokens in source_data;
+    # do not log it verbatim. Keep only a job-type breadcrumb.
+    my $log_type = 'unknown';
+    if (ref($payload) eq 'HASH') { $log_type = $payload->{type} // 'unknown'; }
+    elsif ($json) { my $p = eval { decode_json($json) }; $log_type = $p->{type} if ref($p) eq 'HASH' && $p->{type}; }
+    warn "CoGe::Services::API::Job::add: type=$log_type\n";
     unless ($payload || $json) {
         $self->render(API_STATUS_MISSING_BODY);
         return;

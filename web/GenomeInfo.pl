@@ -1696,7 +1696,8 @@ sub recommend_certification {
     CoGe::Accessory::Web::send_email(
         from => $email,
         to => $email,
-        subject => "genome certification recommendation\nContent-Type: text/html; charset=ISO-8859-1",
+        subject => "genome certification recommendation",
+        content_type => 'text/html; charset=ISO-8859-1', # §7.4 real header, not a \n-smuggle in Subject
         body => '<html><head></head><body>' . $body . '</body></html>'
     );
 }

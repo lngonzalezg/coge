@@ -22,7 +22,7 @@ GetOptions(
 );
 
 $| = 1;
-print STDOUT "Starting $0 (pid $$)\n", qx/ps -o args $$/;
+print STDOUT "Starting $0 (pid $$)\n"; # §7.4 do not print argv into the job log
 
 # Check required parameters
 die "ERROR: from not specified" unless $from;

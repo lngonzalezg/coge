@@ -17,7 +17,7 @@ GetOptions(
 );
 
 $| = 1;
-print STDOUT "Starting $0 (pid $$)\n", qx/ps -o args $$/;
+print STDOUT "Starting $0 (pid $$)\n"; # §7.4 do not print argv (leaks the FTP password into the job log)
 
 unless ($url && $dest_path) {
     print STDERR "Missing required argument\n";
