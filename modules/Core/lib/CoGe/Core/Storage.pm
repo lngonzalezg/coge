@@ -269,6 +269,13 @@ sub get_genome_seq {
     #print STDERR "file_path=$file_path file_index_sz=$file_index_sz\n";
     if ($file_index_sz) {    # new indexed method
         # Extract requested piece of sequence file
+	# Audit §4.5: $chr is interpolated into a samtools shell command (single-quoted, so a
+	# literal quote breaks out -> RCE in the web process). Restrict it to a safe
+	# chromosome-name grammar; reject anything else before it reaches the shell.
+	if ( defined $chr && length $chr && $chr !~ /^[\w.\-]+$/ ) {
+		warn "Storage::get_genome_seq: rejecting invalid chr '$chr'\n";
+		return ''; # empty sequence -> handler renders cleanly, no shell invocation
+	}
 	my $region = "lcl|".$chr . ( defined $start && defined $stop ? ":$start-$stop" : '' );
         my $samtools = CoGe::Accessory::Web::get_command_path('SAMTOOLS');
         my $cmd = "$samtools faidx $file_path '$region'";

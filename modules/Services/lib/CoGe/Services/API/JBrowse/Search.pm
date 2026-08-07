@@ -574,7 +574,17 @@ sub _snps {
         closedir $dh;
         my @files = grep(/\.processed$/, @dir_entries);
         @files = grep(/\.vcf$/, @dir_entries) unless @files;
-        my $cmd = "$cmdpath $storage_path/" . $files[0] . ' ' . $self->stash('chr') . ' "' . $self->param('snp_type') . '"';
+        # Audit §4.5: snp_type (double-quoted) and chr are interpolated into a shell
+        # command. Restrict both to a safe grammar so neither can break out; reject
+        # otherwise.
+        my $snp_type = $self->param('snp_type');
+        my $snp_chr  = $self->stash('chr');
+        if ( ( defined $snp_type && $snp_type !~ /^[\w.\-]+$/ )
+          || ( defined $snp_chr  && length $snp_chr && $snp_chr !~ /^[\w.\-]+$/ ) ) {
+            $self->render(json => []);
+            return;
+        }
+        my $cmd = "$cmdpath $storage_path/" . $files[0] . ' ' . $snp_chr . ' "' . $snp_type . '"';
         my @cmdOut = qx{$cmd};
 
         my $cmdStatus = $?;

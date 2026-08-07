@@ -124,6 +124,13 @@ sub get_data {
         return;
     }
     my $chr   = $opts{chr};
+    # Audit §4.5: $chr is interpolated into a FastBit query (chr='$chr') and a samtools
+    # shell command ($chr:$start-$stop, unquoted). Restrict it to a safe chromosome-name
+    # grammar so it cannot break out into SQL or the shell; an invalid chr yields no data.
+    if ( defined $chr && length $chr && $chr !~ /^[\w.\-]+$/ ) {
+        warn "Experiment::get_experiment_data: rejecting invalid chr '$chr'\n";
+        return [];
+    }
     my $start = $opts{start};
     my $stop  = $opts{stop};
     $stop = $opts{end} if ( not defined $stop );
