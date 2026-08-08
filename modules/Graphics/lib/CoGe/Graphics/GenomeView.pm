@@ -103,11 +103,36 @@ LICENSE file included with this module.
 
 #for best performance, create all the chromosomes before generating the features.
 
-__PACKAGE__->mk_accessors(qw(organism chromosomes features image_width image_height legend_height _default_feature_color _gd _color_set color_band_flag legend chromosome_height show_count draw_ends max_count));
+__PACKAGE__->mk_accessors(qw(organism chromosomes features image_width image_height legend_height _default_feature_color _gd _color_set color_band_flag legend chromosome_height show_count draw_ends max_count font_path));
 
 my $DEFAULT_COLOR = [255,100,100];
 my $FONT = GD::Font->MediumBold;
-my $FONTTT="/usr/local/fonts/arial.ttf"; #needs to be fixed to get from conf file
+
+# This was hardcoded to /usr/local/fonts/arial.ttf, a path no deployment ever created. GD's
+# stringFT fails *silently* on a missing font -- it returns an empty list and leaves the
+# message in $@ -- so every chromosome name and coordinate label was quietly dropped from
+# the rendered image. Callers should pass font_path (FeatMap.pl passes the FONT config key);
+# the candidates below are the fallback so a missing key degrades to a working font rather
+# than to blank labels. Liberation Sans is metric-compatible with Arial.
+my @FONT_CANDIDATES = (
+    '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+    '/usr/share/fonts/truetype/msttcorefonts/Arial.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+);
+
+# Resolve once per call: font_path if it is usable, else the first readable candidate.
+sub _ttf {
+    my $self = shift;
+    my $configured = $self->font_path;
+    return $configured if $configured && -r $configured;
+    foreach my $f (@FONT_CANDIDATES) {
+        return $f if -r $f;
+    }
+    warn "CoGe::Graphics::GenomeView: no readable TrueType font"
+       . ($configured ? " (font_path '$configured' is not readable)" : "")
+       . "; text labels will not be drawn\n";
+    return undef;
+}
 
 sub generate_imagemap
   {
@@ -298,8 +323,12 @@ sub generate_chromosomes
 	$gd->arc($horz_spacer+$width, $count*$vert_spacer+$height/2, $height, $height, 270, 90, $black) unless defined $self->draw_ends && $self->draw_ends == 0;
 	$gd->line($horz_spacer, $count*$vert_spacer, $horz_spacer, $count*$vert_spacer+$height, $white);
 	$gd->line($horz_spacer+$width, $count*$vert_spacer, $horz_spacer+$width, $count*$vert_spacer+$height, $white);
-        $gd->stringFT($black, $FONTTT, $vert_spacer/5, 0, 5, $count*$vert_spacer, $name);
-	$gd->stringFT($black, $FONTTT, $vert_spacer/5, 0, $real_width, $count*$vert_spacer, $chrs->{$name}->{end});
+	my $ttf = $self->_ttf;
+	if ($ttf)
+	  {
+	    $gd->stringFT($black, $ttf, $vert_spacer/5, 0, 5, $count*$vert_spacer, $name);
+	    $gd->stringFT($black, $ttf, $vert_spacer/5, 0, $real_width, $count*$vert_spacer, $chrs->{$name}->{end});
+	  }
 	$self->draw_centromere($horz_spacer, $count*$vert_spacer, $width, $height, $cstart/$chrs->{$name}->{end}, $cend/$chrs->{$name}->{end}, $black) if $cstart && $cend;
 	$self->draw_features($chrs->{$name}, $horz_spacer, $count*$vert_spacer, $width, $height);
 
@@ -383,8 +412,12 @@ sub draw_features
 	   my $h = $up? sprintf("%.0f",$height+$height/1.3) : sprintf("%.0f",0-$height/1.3+$font_size);
 	   if ($self->show_count)
 	     {
-	       $gd->stringFT($white, $FONTTT, $font_size+6, 0, sprintf("%.0f",$x1-$height/5), $y+$h, $count) unless $count == 1;
-	       $gd->stringFT($black, $FONTTT, $font_size+3, 0, sprintf("%.0f",$x1-$height/5+1), $y+$h-1, $count) unless $count == 1;
+	       my $ttf = $self->_ttf;
+	       if ($ttf && $count != 1)
+		 {
+		   $gd->stringFT($white, $ttf, $font_size+6, 0, sprintf("%.0f",$x1-$height/5), $y+$h, $count);
+		   $gd->stringFT($black, $ttf, $font_size+3, 0, sprintf("%.0f",$x1-$height/5+1), $y+$h-1, $count);
+		 }
 	     }
 	   if ($color_band_flag)
 	     {

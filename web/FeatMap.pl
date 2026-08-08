@@ -198,7 +198,8 @@ sub generate_chromosome_images {
             {
                 color_band_flag   => 1,
                 image_width       => $width,
-                chromosome_height => $height
+                chromosome_height => $height,
+                font_path         => $P->{FONT} # else GenomeView falls back to a bundled font
             }
         ) unless $data{$org}{image};
         foreach my $feat ( @{ $data{$org}{feats} } ) {
