@@ -47,48 +47,39 @@ function verify_image_file(file) {
 }
 </script>
 <div class="box">
-    <h3 style="margin-bottom:16px;">My Account</h3>
-    <div class="coge-section" style="display:inline-flex; align-items:flex-start; gap:24px;">
-        <div class="center top">
-            <img src="image.pl?id=<TMPL_VAR NAME="IMAGE">" class="coge-user-image" style="cursor:pointer;min-width:200px;min-height:200px;" id="big_image" onclick="$(input_upload_file).click()" onerror="if (this.src != 'picts/default_user_image.png') this.src = 'picts/default_user_image.png';"\>
-            <div class="small note">click to change</div>
-            <div class="small note">JPG, GIF or PNG, up to 2MB</div>
-        </div>
-        <div class="top">
-            <div class="bold text">Account Info</div>
-                <table class="border-top border-bottom" style="border-spacing:10px;">
-                    <tr>
-                        <td class="title5">name</td>
-                        <td class="data5"><TMPL_VAR NAME="USER"></td>
-                    </tr>
-                    <tr>
-                        <td class="title5">username</td>
-                        <td class="data5"><TMPL_VAR NAME="USERNAME"></td>
-                    </tr>
-                    <tr>
-                        <td class="title5">email</td>
-                        <td class="data5"><TMPL_VAR NAME="EMAIL"></td>
-                    </tr>
-                    <tr class="hidden">
-                        <td class="title5">image</td>
-                        <td class="data5">
-                            <img src="image.pl?id=<TMPL_VAR NAME="IMAGE">" class="coge-user-image" style="vertical-align:middle;" id="account_image" onerror="if (this.src != 'picts/default_user_image.png') this.src = 'picts/default_user_image.png';"\>
-                            <button onclick="select_image_file();">replace</button>
-                            <input id="input_upload_file" name="input_upload_file" type="file" data-url='User.pl' class="hidden" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="title5">date added</td>
-                        <td class="data5"><TMPL_VAR NAME="DATE"></td>
-                    </tr>
-                    <!--
-                    <tr>
-                        <td class="title5">description</td>
-                        <td class="data5"><TMPL_VAR NAME="DESCRIPTION"></td>
-                    </tr>
-                    -->
-                </table>
+    <div style="max-width:720px;">
+        <h1 style="font-size:26px; margin-bottom:24px;">My Account</h1>
+        <div class="coge-pane" style="overflow:hidden;">
+            <div style="display:flex; gap:28px; padding:28px;">
+                <div style="flex:none; text-align:center;">
+                    <div style="width:160px; height:160px; border-radius:8px; border:1px solid #dee2e6; background:#f8f9fa; overflow:hidden; cursor:pointer;">
+                        <img src="image.pl?id=<TMPL_VAR NAME="IMAGE">" style="width:100%; height:100%; object-fit:cover;" id="big_image" onclick="$(input_upload_file).click()" onerror="if (this.src != 'picts/default_user_image.png') this.src = 'picts/default_user_image.png';"\>
+                    </div>
+                    <div class="small note" style="margin-top:8px;">click to change</div>
+                </div>
+                <div style="flex:1; min-width:0;">
+                    <div class="coge-eyebrow" style="letter-spacing:0.07em; text-transform:uppercase; color:#495057; padding-bottom:12px; border-bottom:1px solid #dee2e6;">Account Info</div>
+                    <dl style="margin:14px 0 0; display:grid; grid-template-columns:130px 1fr; gap:14px 20px; font-size:14px;">
+                        <dt class="info">name</dt>
+                        <dd style="margin:0;"><TMPL_VAR NAME="USER"></dd>
+                        <dt class="info">username</dt>
+                        <dd style="margin:0;" class="coge-code"><TMPL_VAR NAME="USERNAME"></dd>
+                        <dt class="info">email</dt>
+                        <dd style="margin:0;" class="coge-code"><TMPL_VAR NAME="EMAIL"></dd>
+                        <dt class="info">date added</dt>
+                        <dd style="margin:0;"><TMPL_VAR NAME="DATE"></dd>
+                    </dl>
+                    <div class="hidden">
+                        <img src="image.pl?id=<TMPL_VAR NAME="IMAGE">" class="coge-user-image" style="vertical-align:middle;" id="account_image" onerror="if (this.src != 'picts/default_user_image.png') this.src = 'picts/default_user_image.png';"\>
+                        <input id="input_upload_file" name="input_upload_file" type="file" data-url='User.pl' class="hidden" />
+                    </div>
+                </div>
             </div>
+            <div style="border-top:1px solid #dee2e6; background:#f8f9fa; padding:14px 28px; display:flex; align-items:center; gap:10px;">
+                <span class="coge-chipbtn" style="height:34px; font-size:13px;" onclick="select_image_file();">replace</span>
+                <span class="small info">JPG, GIF or PNG. 2MB maximum.</span>
+            </div>
+        </div>
     </div>
 </div>
 <TMPL_INCLUDE NAME="footer.tmpl">

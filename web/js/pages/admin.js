@@ -39,6 +39,12 @@ $(function () {
 			if (current_tab == 2 && !hist_grid) {
 				init_hist_grid();
 			}
+			if (current_tab == 3 && !user_graph_init) {
+				// The graph only rendered after picking a view from the select,
+				// which made the tab look broken. Default to the Users view.
+				$('#graph_view_select').prop('selectedIndex', 1);
+				init_graph(1);
+			}
 			if (current_tab == 4 && !reports_grid) {
 				init_reports();
 			}
@@ -966,6 +972,7 @@ $.extend(JobGrid.prototype, {
     		order: [[1, "desc"]],
     		scrollY: self.height,
     		lengthChange: false,
+    		autoWidth: false, // container is hidden at init; widths computed then are wrong
 	    });
 		
 		self.get_data.call(self);
@@ -994,6 +1001,7 @@ $.extend(JobGrid.prototype, {
 					
 			    	$('#' + self.elementId + '_loading').hide();
 					$('#' + self.elementId).show();
+					self.table.columns.adjust(); // recompute now that the container is visible
 			    },
 			    complete: function(data) {
 			    	self.flag = false;

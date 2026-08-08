@@ -575,10 +575,26 @@ html .ui-button.ui-state-disabled:hover, html .ui-button.ui-state-disabled:activ
 
 /* Dialogs */
 .ui-dialog { border-radius: var(--coge-radius); box-shadow: var(--coge-shadow-md); border: 1px solid var(--coge-gray-3); padding: 0; }
+/* Compact green titlebar — just tall enough to clear the close button. */
 .ui-dialog .ui-dialog-titlebar {
-  background: #fff; border: 0; border-bottom: 1px solid var(--coge-gray-3);
-  border-radius: var(--coge-radius) var(--coge-radius) 0 0; padding: 16px 20px; font-size: 16px; color: var(--coge-gray-9);
+  background: var(--coge-green-8);
+  border: 0;
+  border-radius: calc(var(--coge-radius) - 1px) calc(var(--coge-radius) - 1px) 0 0;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 24px;
 }
+.ui-dialog .ui-dialog-title { color: #fff; }
+.ui-dialog .ui-dialog-titlebar-close,
+.ui-dialog .ui-dialog-titlebar-close.ui-state-hover {
+  background: transparent;
+  border: 0;
+  border-radius: var(--coge-radius-sm);
+}
+.ui-dialog .ui-dialog-titlebar-close:hover { background: var(--coge-green-9); }
+.ui-dialog .ui-dialog-titlebar-close .ui-icon { filter: brightness(0) invert(1); }
 .ui-dialog .ui-dialog-content { padding: 20px; }
 .ui-dialog .ui-dialog-buttonpane { border-top: 1px solid var(--coge-gray-3); background: var(--coge-gray-0); margin: 0; padding: 12px 20px; }
 .ui-widget-overlay { background: #000; opacity: .4; }
@@ -788,6 +804,73 @@ span.infobox { background-color: var(--coge-green-0); border-color: var(--coge-g
 .coge-field-row > label:first-child { width: 150px; flex: none; color: var(--coge-gray-7); }
 .coge-field-hint { font-size: 13px; color: var(--coge-gray-6); }
 .coge-eyebrow { font-size: 12px; font-weight: 600; color: var(--coge-gray-6); margin-bottom: 8px; }
+
+/* ===================== 8c. MY DATA (User.pl) ============================= */
+/* Three real columns with hairline dividers — no floats, no margin nudges.
+ * SearchResults.pl shares the same panels and inherits this. */
+.coge-mydata {
+  display: flex;
+  align-items: stretch;
+  background: #fff;
+  border: 1px solid var(--coge-gray-3);
+  border-radius: var(--coge-radius);
+  overflow: hidden;
+  min-height: 560px;
+}
+/* SearchResults keeps the panel hidden until results arrive — don't let the
+ * flex display defeat coge.css's .hidden. */
+.coge-mydata.hidden { display: none; }
+.coge-mydata-left {
+  width: 224px;
+  flex: none;
+  border-right: 1px solid var(--coge-gray-3);
+  padding: 20px 12px;
+  box-sizing: border-box;
+}
+.coge-mydata-left #create_button {
+  display: block;
+  text-align: center;
+  font-size: 14px;
+  margin-bottom: 18px;
+}
+.coge-mydata-left #toc_panel { width: auto; padding: 0; }
+.coge-mydata-left .coge-side-menu ul li span {
+  border-radius: var(--coge-radius);
+  padding: 7px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--coge-gray-7);
+}
+.coge-mydata-left .coge-side-menu li li span { padding-left: 28px; }
+.coge-mydata-left .coge-side-menu li li li span { padding-left: 46px; }
+.coge-mydata-left .coge-side-menu .selected {
+  font-weight: 600;
+  color: var(--coge-green-9);
+  background: var(--coge-green-0);
+}
+.coge-mydata-center {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.coge-mydata-toolbar {
+  min-height: 30px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--coge-gray-3);
+}
+.coge-mydata-toolbar #contents_title { font-size: 16px; }
+.coge-mydata-center .grid, .coge-mydata-center .html { border-top: 0 !important; padding: 0 20px; }
+.coge-mydata-right {
+  width: 260px;
+  flex: none;
+  border-left: 1px solid var(--coge-gray-3);
+  background: var(--coge-gray-0);
+  padding: 20px;
+  box-sizing: border-box;
+}
+.coge-mydata-right #info_panel { border-top: 0; margin: 0; padding: 0; color: var(--coge-gray-7); }
 
 /* ============================ 9. HOME ==================================== */
 

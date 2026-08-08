@@ -23,32 +23,23 @@ const USER_ID       = '<TMPL_VAR NAME="USER_ID">';
 
 <div id="msg" class="hidden medium center note" style="margin-top:2em;"></div>
 
-<div id="bottom-panel" class="hidden" style="width:100%;">
-	<div style="float:right;width:225px;">
-		<span id="show_panel_button" onClick="show_top_panel();" class="link ui-icon ui-icon-plus hidden coge-border" style="float:right;margin-right:5px;"></span>
-
-		<div id="info_panel" class="small panel coge-border-top" style="overflow:none;margin-left:10px;margin-top:29px;color:gray;">
+<div id="bottom-panel" class="hidden coge-mydata">
+	<div class="coge-mydata-left">
+	    <div id="toc_panel" class="small panel noselect hidden" style="overflow:auto;cursor:pointer;">
+            <div class="bold text" style="font-size:16px; padding:0 10px 12px;">Search Results</div>
+			<ul>
+				<li><span data-type="genome"><img src="picts/dna-icon.png" width="15" height="15"/> Genomes </span></li>
+				<li><span data-type="organism"><img src="picts/Organism.svg" width="15" height="15"/> Organisms </span></li>
+				<li><span data-type="feature"><img src="picts/feature-icon.png" width="15" height="15"/> Features </span></li>
+				<li><span data-type="experiment"><img src="picts/testtube-icon.png" width="15" height="15"/> Experiments </span></li>
+				<li><span data-type="notebook"><img src="picts/notebook-icon.png" width="15" height="15"/> Notebooks </span></li>
+				<li><span data-type="group"><img src="picts/group-icon.png" width="15" height="15"/> User Groups </span></li>
+			</ul>
 		</div>
 	</div>
 
-	<div style="float:left;margin-right:5px;">
-	    <div id="toc_panel" class="small panel noselect hidden" style="overflow:auto;width:11em;cursor:pointer;">
-            <div class="bold padded text" style="font-size:1.1em;">Search Results</div>
-            <div class="indent">
-				<ul>
-					<li><span data-type="genome"><img src="picts/dna-icon.png" width="15" height="15"/> Genomes </span></li>
-					<li><span data-type="organism"><img src="picts/Organism.svg" width="15" height="15"/> Organisms </span></li>
-					<li><span data-type="feature"><img src="picts/feature-icon.png" width="15" height="15"/> Features </span></li>
-					<li><span data-type="experiment"><img src="picts/testtube-icon.png" width="15" height="15"/> Experiments </span></li>
-					<li><span data-type="notebook"><img src="picts/notebook-icon.png" width="15" height="15"/> Notebooks </span></li>
-					<li><span data-type="group"><img src="picts/group-icon.png" width="15" height="15"/> User Groups </span></li>
-				</ul>
-            </div>
-		</div>
-	</div>
-
-	<div id="contents_panel" class="small panel">
-		<div class="noselect" style="height:24px">
+	<div id="contents_panel" class="small panel coge-mydata-center">
+		<div class="noselect coge-mydata-toolbar">
 			<span id="contents_title" style="float:left;min-width:130px;font-weight:bold;margin-right:20px;"></span>
 			<TMPL_IF NAME="USER_ID">
 			<span id="add_button" onClick="add_dialog();" class="add coge-icon glyphicon glyphicon-plus item-button invisible" style="margin-right:5px;" title="Create New Item"></span>
@@ -60,11 +51,18 @@ const USER_ID       = '<TMPL_VAR NAME="USER_ID">';
 			<span id="undelete_button" onClick="undelete_items();" class="undelete coge-icon coge-disabled glyphicon glyphicon-asterisk item-button invisible" style="margin-right:5px;" title="Undelete Selected Items"></span>
 			</TMPL_IF>
 			<span id="send_button" onClick="send_menu();" class="sendto coge-icon coge-disabled glyphicon glyphicon-arrow-right item-button invisible" style="margin-right:5px;" title="Send Selected Items to ..."></span>
-			<input id="search_input" type="search" placeholder="Filter" size="25" class="coge-border" style="float:right;margin-right:15px;vertical-align:top;" />
+			<input id="search_input" type="search" placeholder="Filter" size="25" style="float:right;margin-right:15px;vertical-align:top;" />
 			<span id="refresh_label" class="xsmall hidden info" style="float:right;padding-right:25px;">Refreshing...</span>
 		</div>
-		<div class="grid hidden noselect coge-border-top" style="overflow:auto;border-bottom:none !important;"></div>
-		<div class="html hidden coge-border-top" style="overflow:auto;border-bottom:none !important;"></div>
+		<div class="grid hidden noselect" style="overflow:auto;border-top:1px solid #dee2e6;border-bottom:none !important;"></div>
+		<div class="html hidden" style="overflow:auto;border-top:1px solid #dee2e6;border-bottom:none !important;"></div>
+	</div>
+
+	<div class="coge-mydata-right">
+		<span id="show_panel_button" onClick="show_top_panel();" class="link ui-icon ui-icon-plus hidden coge-border" style="float:right;"></span>
+		<div class="coge-eyebrow" style="letter-spacing:0.07em; text-transform:uppercase; color:#495057; margin-bottom:14px;">Selected item</div>
+		<div id="info_panel" class="small panel" style="overflow:none;">
+		</div>
 	</div>
 </div>
 
