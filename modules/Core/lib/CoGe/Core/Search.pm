@@ -169,6 +169,11 @@ sub push_results {
 	}
 }
 
+# Cap results per category. Without a cap a broad term ("arabidopsis") matches
+# millions of feature names; the query, the DBIx row inflation and the JSON
+# encoding each take minutes and the API worker is single-threaded.
+our $MAX_RESULTS_PER_TYPE = 1000;
+
 sub search {
 	my %opts = @_;
 
@@ -187,7 +192,8 @@ sub search {
     # Genomes
 	if ((!$type || $type eq 'genome') && contains_none_of($query, ['feature_type', 'tag'])) {
 		my $conditions = build_conditions(['me.name', 'me.description', 'me.genome_id', 'organism.name', 'organism.description'],  $query->{'search_terms'});
-		my $rs = do_search('Genome', $conditions, $conditions ? { join => 'organism' } : undef, $query, $db, $user);
+		# prefetch (not just join): info() reads organism per row, which was an N+1
+		my $rs = do_search('Genome', $conditions, { prefetch => 'organism', rows => $MAX_RESULTS_PER_TYPE }, $query, $db, $user);
 		if ($rs) {
 			my @genomes = sort info_cmp $rs->all();
 			push_results(\@results, \@genomes, 'genome', $user, 'has_access_to_genome', $favorites);
@@ -211,7 +217,7 @@ sub search {
     # Experiments
 	if ((!$type || $type eq 'experiment') && contains_none_of($query, ['certified', 'feature_type'])) {
 		my $conditions = build_conditions(['me.name', 'me.description', 'me.experiment_id', 'genome.name', 'genome.description', 'organism.name', 'organism.description'],  $query->{'search_terms'});
-		my $rs = do_search('Experiment', $conditions, $conditions ? { join => { 'genome' => 'organism' } } : undef, $query, $db, $user);
+		my $rs = do_search('Experiment', $conditions, { prefetch => { 'genome' => 'organism' }, rows => $MAX_RESULTS_PER_TYPE }, $query, $db, $user);
 		if ($rs) {
 			my @experiments = sort info_cmp $rs->all();
 			push_results(\@results, \@experiments, 'experiment', $user, 'has_access_to_experiment', $favorites);
@@ -221,7 +227,7 @@ sub search {
     # Notebooks
 	if ((!$type || $type eq 'notebook') && contains_none_of($query, ['certified', 'feature_type', 'tag'])) {
 		my $conditions = build_conditions(['name', 'description', 'list_id'],  $query->{'search_terms'});
-		my $rs = do_search('List', $conditions, undef, $query, $db, $user);
+		my $rs = do_search('List', $conditions, { rows => $MAX_RESULTS_PER_TYPE }, $query, $db, $user);
 		if ($rs) {
 			my @notebooks = sort { lc($a->name) cmp lc($b->name) } $rs->all();
 			push_results(\@results, \@notebooks, 'notebook', $user, 'has_access_to_notebook', $favorites);
@@ -231,7 +237,7 @@ sub search {
     # User groups
 	if ($show_users && (!$type || $type eq 'usergroup') && contains_none_of($query, ['certified', 'favorite', 'feature_type', 'restricted', 'metadata_key', 'metadata_value', 'role', 'tag'])) {
 		my $conditions = build_conditions(['name', 'description', 'user_group_id'],  $query->{'search_terms'});
-		my $rs = do_search('UserGroup', $conditions, undef, $query, $db, $user);
+		my $rs = do_search('UserGroup', $conditions, { rows => $MAX_RESULTS_PER_TYPE }, $query, $db, $user);
 		if ($rs) {
 			my @user_groups = sort info_cmp $rs->all();
 			push_results(\@results, \@user_groups, 'group', $user, undef, $favorites);
@@ -256,9 +262,14 @@ sub search {
 			$ft_col = '?';
 			push @bind, $feature_type;   # shown as the feature_type column
 		}
-		my $sql = 'SELECT feature_name.name,feature.feature_id,' . $ft_col . ',organism.name,data_source.name,genome.version,genomic_sequence_type.name ' .
-			'FROM feature_name ' .
+		# The fulltext match runs in a LIMITed subquery so a broad term stops
+		# after MAX_RESULTS_PER_TYPE names instead of dragging millions of rows
+		# through the join fanout and GROUP BY (which must otherwise complete
+		# before any LIMIT applies).
+		my $sql = 'SELECT fn.name,feature.feature_id,' . $ft_col . ',organism.name,data_source.name,genome.version,genomic_sequence_type.name ' .
+			'FROM (SELECT name,feature_id FROM feature_name WHERE MATCH(name) AGAINST (?) LIMIT ' . int($MAX_RESULTS_PER_TYPE) . ') AS fn ' .
 				'JOIN feature USING(feature_id) ';
+		push @bind, (join ',', @{$query->{'search_terms'}});
 		$sql .= 'JOIN feature_type USING(feature_type_id) ' unless $feature_type;
 		$sql .= 'JOIN dataset USING(dataset_id) ' .
 				'JOIN data_source USING(data_source_id) ' .
@@ -266,15 +277,13 @@ sub search {
 				'JOIN genome ON dataset_connector.genome_id=genome.genome_id AND !genome.deleted ';
 		$sql .= 'AND !genome.restricted ' if !$user || $user->is_public;
 		$sql .= 'JOIN organism USING(organism_id) ' .
-				'JOIN genomic_sequence_type USING(genomic_sequence_type_id) ' .
-			'WHERE MATCH(feature_name.name) AGAINST (?) ';
-		push @bind, (join ',', @{$query->{'search_terms'}});
+				'JOIN genomic_sequence_type USING(genomic_sequence_type_id) ';
 		if ($feature_type) {
 			my @row = $dbh->selectrow_array('SELECT feature_type_id FROM feature_type WHERE name=?', undef, $feature_type);
-			$sql .= 'AND feature.feature_type_id=? ';
+			$sql .= 'WHERE feature.feature_type_id=? ';
 			push @bind, $row[0];   # integer from DB; bound, never interpolated
 		}
-		$sql .= 'GROUP BY feature_name.name,feature.feature_id';
+		$sql .= 'GROUP BY fn.name,feature.feature_id';
 		my $rows = $dbh->selectall_arrayref($sql, undef, @bind);
 
 		foreach (@$rows) { #TODO use fetchall_hashref and map for performance improvement, mdb 12/22/16

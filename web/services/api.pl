@@ -8,6 +8,21 @@ use Data::Dumper;
 
 use CoGe::Accessory::Web qw(get_defaults);
 use CoGe::Services::Auth; # security pass 2 (X4): for the before_dispatch write-gate
+
+# Eager-load the heavy modules (CoGeX schema and the hot controllers) so the
+# cost is paid once at server boot, not on the first request. Under morbo the
+# lazy load made a freshly (re)started worker look hung for 30+ seconds; under
+# hypnotoad the manager loads these once and forks pre-warmed workers.
+use CoGeX;
+use CoGe::Core::Search;
+use CoGe::Services::API::Search;
+use CoGe::Services::API::Organism;
+use CoGe::Services::API::Genome;
+use CoGe::Services::API::Experiment;
+use CoGe::Services::API::Notebook;
+use CoGe::Services::API::Feature;
+use CoGe::Services::API::User;
+use CoGe::Services::API::Group;
 print STDERR '=' x 80, "\n== CoGe API\n", '=' x 80, "\n";
 print STDERR "Home path: ", get_defaults->{_HOME_PATH}, "\n";
 print STDERR "Config file: ", get_defaults->{_CONFIG_PATH}, "\n";
@@ -20,8 +35,9 @@ print STDERR "Port: $port\n";
 # Setup Hypnotoad
 app->config(
     hypnotoad => {
-        listen => ["http://localhost:$port/"],
-        pid_file => get_defaults->{_HOME_PATH},
+        listen => ["http://127.0.0.1:$port/"],
+        pid_file => '/tmp/coge-api.pid', # was _HOME_PATH: a directory, which broke hypnotoad startup
+        workers => 4,
         proxy => 1,
         heartbeat_timeout => 5*60,#30, # number of seconds before restarting unresponsive worker (needed for large JBrowse requests)
         inactivity_timeout => 0, # mdb added 7/20/16 for long-running BAM queries
