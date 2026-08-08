@@ -27,13 +27,13 @@
 }
 
 .contentBox {
-    background-color: #F5F5F5;
+    background-color: #fff;
     height: auto;
-    border: 1px solid #119911;
-    border-radius: 0px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
     margin: 0px;
     box-sizing: border-box;
-    padding: .1em;
+    padding: 8px;
     position: relative;
 }
 
@@ -78,35 +78,38 @@
 }
 
 .label {
-    border-radius: 4px;
-    padding: 2px;
-    opacity: 0.65;
-    font-weight: bold;
+    border-radius: 20px;
+    padding: 2px 9px;
+    font-size: 12px;
+    font-weight: 600;
 }
 
 #xlabel {
-    border: 3px solid #8B0000;
-    background-color: #FF6464;
+    border: 1px solid #ffc9c9;
+    background-color: #fff5f5;
+    color: #c92a2a;
 }
 
 #ylabel {
-    border: 3px solid #00008B;
-    background-color: #0064FF;
+    border: 1px solid #a5d8ff;
+    background-color: #e7f5ff;
+    color: #1971c2;
 }
 
 #zlabel {
-    border: 3px solid #008000;
-    background-color: #90EE90;
+    border: 1px solid #b2f2bb;
+    background-color: #ebfbee;
+    color: #2b8a3e;
 }
 
 .redtxt {
-    color: red;
+    color: #c92a2a;
 }
 .bluetxt {
-    color: blue;
+    color: #1971c2;
 }
 .greentxt {
-    color: green;
+    color: #2b8a3e;
 }
 
 #instruct {
@@ -116,7 +119,7 @@
     left: 30px;
     background-color: #FFFFFF;
     opacity: 0.95;
-    border: 1px solid #119911;
+    border: 1px solid #dee2e6;
     border-radius: 6px;
 }
 
@@ -133,8 +136,8 @@
     margin: 0px;
     margin-bottom: 10px;
     padding: 0px;
-    background-color: #F5F5F5;
-    border: 1px solid #119911;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
 }
 
 #hKs, #hKn, #hKnKs{
@@ -347,7 +350,7 @@
 
 <!-- Error Message (Empty Results) Div -->
 <div id="error_empty-results" style="display:none">
-    <h2><span style="color:red">The submitted analysis returned no results</span></h2>
+    <h2><span class="alert">The submitted analysis returned no results</span></h2>
     <span style="font-weight:bold"> This could be to reasons such as:</span>
     <ul>
         <li><span style="font-weight:bold">- Too distant comparison:</span> distant species may not share three-way synteny.</li>
@@ -360,7 +363,7 @@
 
 <!-- Error Message (Too Many Points) Div -->
 <div id="error_too-many-pts" style="display:none">
-    <h2><span style="color:red">The submitted analysis has too many hits for the SynMap3D renderer! </span></h2>
+    <h2><span class="alert">The submitted analysis has too many hits for the SynMap3D renderer! </span></h2>
 
     <span style="font-weight:bold">Your raw results are still available for download:</span><br>
     <div id="error_too-many-pts_download"></div><br>
@@ -402,7 +405,7 @@
 <script id="general-options-template" type="text/template">
 	<div class="form-section">
         <fieldset class="ui-widget-content ui-corner-all coge-section">
-            <legend style="color:#009900">Blast Algorithm</legend>
+            <legend>Blast Algorithm</legend>
             <select id="blast" name="blast" onchange="update_blast_option($(this).val())">
                 <option value="6" <tmpl_var name="LAST_SELECT">>Last (fastest)
                 <option value="4" <tmpl_var name="LASTZ_SELECT">>(B)lastZ (fast)
@@ -421,7 +424,7 @@
         </fieldset>
     
         <fieldset class="ui-widget-content ui-corner-all coge-section">
-            <legend style="color:#009900;">DAGChainer Options</legend>
+            <legend>DAGChainer Options</legend>
             <ul style="list-style-type: none; padding: 0; margin: 0;">
                 <li>
                     <label>Relative Gene Order</label>
@@ -453,7 +456,7 @@
         </fieldset>
 
         <fieldset class="ui-widget-content ui-corner-all coge-section">
-            <legend style="color:#009900">Merge Syntenic Blocks</legend>
+            <legend>Merge Syntenic Blocks</legend>
                 <label>Algorithm:</label>
                 <select id="merge_algo" name="merge_algo" onchange="merge_select_check()">
                     <option VALUE="0"> --None--
@@ -479,7 +482,7 @@
         </fieldset>
     
         <fieldset class="ui-widget-content ui-corner-all coge-section">
-            <legend style="color:#009900">Syntenic Depth</legend>
+            <legend>Syntenic Depth</legend>
             <ul style="list-style-type: none; padding: 0; margin: 0;">
                 <li>
                     <label>Algorithm:</label>
@@ -491,11 +494,11 @@
                 <li id="depth_options" style="display:none;">
                     <label>Ratio of coverage depth:</label>
     
-                    <span style="color:#009900" name="depth_org_1" id="depth_org_1"></span>
+                    <span name="depth_org_1" id="depth_org_1"></span>
                     <input type="text" size="2" name="depth_org_1_ratio" id="depth_org_1_ratio" value="<tmpl_var name=depth_org_1_ratio>">
                     -to-
                     <input type="text" size="2" name="depth_org_2_ratio" id="depth_org_2_ratio" value="<tmpl_var name=depth_org_2_ratio>">
-                    <span style="color:#009900" name="depth_org_2" id=depth_org_2></span><br>
+                    <span name="depth_org_2" id=depth_org_2></span><br>
     
                     <label>Overlap distance:</label>
                     <input type="text" size="8" name="depth_overlap" id="depth_overlap" value="<tmpl_var name=depth_overlap>">
@@ -504,7 +507,7 @@
         </fieldset>
     
         <fieldset class="ui-widget-content ui-corner-all coge-section">
-            <legend style="color:#009900">Fractionation Bias</legend>
+            <legend>Fractionation Bias</legend>
             <ul style="list-style-type: none; padding: 0; margin: 0;">
                 <li>
                     <label>Run:</label>
@@ -538,7 +541,7 @@
         </fieldset>
     
         <fieldset class="ui-widget-content ui-corner-all coge-section">
-            <legend style="color:#009900;">CodeML</legend>
+            <legend>CodeML</legend>
             <ul style="padding: 0; margin: 0;">
                 <li>
                     <label>Calculate syntenic CDS pairs and color dots:</label>
@@ -547,7 +550,7 @@
                         <option value="ks" <tmpl_var name=ks1> >Synonymous (Ks)</option>
                         <option value="kn" <tmpl_var name=ks2> >Non-synonymous (Kn)</option>
                         <option value="kn_ks" <tmpl_var name=ks3>>Kn/Ks</option>
-                    </select> substitution rates <small style="color:red">(SLOW)</small>
+                    </select> substitution rates <span class="coge-badge coge-badge-warn">SLOW</span>
                 </li>
                 <li>
                     <label>Color scheme:</label>
@@ -576,13 +579,13 @@
                     <input type="checkbox" name="logks" value="true" id="logks" <tmpl_var name=logks> >
                 </li>
                 <li>
-                    <small style="color:red">&nbsp;&nbsp;&nbsp;&nbsp; Only applicable to protein coding sequences (CDS vs. CDS)</small>
+                    <small class="coge-warn-text">&nbsp;&nbsp;&nbsp;&nbsp; Only applicable to protein coding sequences (CDS vs. CDS)</small>
                 </li>
             </ul>
         </fieldset>
     
         <fieldset class="ui-widget-content ui-corner-all coge-section">
-            <legend style="color:#009900">Advanced Options (
+            <legend>Advanced Options (
             <a href="../wiki/index.php/SynMap#Advanced_Options">see page docs</a>)</legend>
             <ul style="list-style-type: none; padding: 0; margin: 0;">
                 <li>

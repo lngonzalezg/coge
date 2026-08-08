@@ -279,12 +279,10 @@ function hideDropdowns() {
 			<ul class="coge-header-search">
 				<li>
 					<div class="coge-header-searchbar">
+						<svg id="header_search_button" class="coge-header-search-icon" onclick="search();" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" /><path d="M21 21l-6 -6" /></svg>
 				    	<input id="header_search_text" type="text" class="text" placeholder="Search database" value="<TMPL_VAR NAME='SEARCH_TEXT'>" spellcheck="false" onkeypress="searchKey(event)">
 				    </div>
 				</li>
-				<li>
-				    <div id="header_search_button" class="glyphicon glyphicon-search coge-button coge-header-search-button" style="width:1em;" onclick="search();"></div>
-			    </li>
 				<li id="advanced_search" class="coge-header-button">
 					<div id="advanced_search_label">
 						<a>advanced</a>

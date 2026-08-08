@@ -46,13 +46,15 @@ function verify_image_file(file) {
     return 1;
 }
 </script>
-<table align="center" style="margin-top:10%;">
-    <tr><td>
-        <div class="center inline top" style="margin-right:20px;">
+<div class="box">
+    <h3 style="margin-bottom:16px;">My Account</h3>
+    <div class="coge-section" style="display:inline-flex; align-items:flex-start; gap:24px;">
+        <div class="center top">
             <img src="image.pl?id=<TMPL_VAR NAME="IMAGE">" class="coge-user-image" style="cursor:pointer;min-width:200px;min-height:200px;" id="big_image" onclick="$(input_upload_file).click()" onerror="if (this.src != 'picts/default_user_image.png') this.src = 'picts/default_user_image.png';"\>
             <div class="small note">click to change</div>
+            <div class="small note">JPG, GIF or PNG, up to 2MB</div>
         </div>
-        <div class="inline top">
+        <div class="top">
             <div class="bold text">Account Info</div>
                 <table class="border-top border-bottom" style="border-spacing:10px;">
                     <tr>
@@ -87,7 +89,6 @@ function verify_image_file(file) {
                     -->
                 </table>
             </div>
-        </div>
-    </td></tr>
-</table>
+    </div>
+</div>
 <TMPL_INCLUDE NAME="footer.tmpl">

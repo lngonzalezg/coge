@@ -81,7 +81,7 @@
     <div id="tab-2">
     <form id="parameters">
     <fieldset class="ui-widget-content ui-corner-all coge-section">
-        <legend style="color:#009900">Blast Algorithm</legend>
+        <legend>Blast Algorithm</legend>
         <select id="blast" name="blast" onchange="update_blast_option($(this).val())">
             <option value="6" <tmpl_var name="LAST_SELECT">>Last (fastest)
             <option value="4" <tmpl_var name="LASTZ_SELECT">>(B)lastZ (fast)
@@ -100,7 +100,7 @@
     </fieldset>
 
     <fieldset class="ui-widget-content ui-corner-all coge-section">
-        <legend style="color:#009900;">DAGChainer Options</legend>
+        <legend>DAGChainer Options</legend>
         <ul style="list-style-type: none; padding: 0; margin: 0;">
             <li>
                 <label>Relative Gene Order</label>
@@ -132,7 +132,7 @@
     </fieldset>
 
     <fieldset class="ui-widget-content ui-corner-all coge-section">
-        <legend style="color:#009900">Merge Syntenic Blocks</legend>
+        <legend>Merge Syntenic Blocks</legend>
             <label>Algorithm:</label>
             <select id="merge_algo" name="merge_algo" onchange="merge_select_check()">
                 <option VALUE="0"> --None--
@@ -158,7 +158,7 @@
     </fieldset>
 
     <fieldset class="ui-widget-content ui-corner-all coge-section">
-        <legend style="color:#009900">Syntenic Depth</legend>
+        <legend>Syntenic Depth</legend>
         <ul style="list-style-type: none; padding: 0; margin: 0;">
             <li>
                 <label>Algorithm:</label>
@@ -170,11 +170,11 @@
             <li id="depth_options" style="display:none;">
                 <label>Ratio of coverage depth:</label>
 
-                <span style="color:#009900" name="depth_org_1" id="depth_org_1"></span>
+                <span name="depth_org_1" id="depth_org_1"></span>
                 <input type="text" size="2" name="depth_org_1_ratio" id="depth_org_1_ratio" value="<tmpl_var name=depth_org_1_ratio>">
                 -to-
                 <input type="text" size="2" name="depth_org_2_ratio" id="depth_org_2_ratio" value="<tmpl_var name=depth_org_2_ratio>">
-                <span style="color:#009900" name="depth_org_2" id=depth_org_2></span><br>
+                <span name="depth_org_2" id=depth_org_2></span><br>
 
                 <label>Overlap distance:</label>
                 <input type="text" size="8" name="depth_overlap" id="depth_overlap" value="<tmpl_var name=depth_overlap>">
@@ -183,7 +183,7 @@
     </fieldset>
 
     <fieldset class="ui-widget-content ui-corner-all coge-section">
-        <legend style="color:#009900">Fractionation Bias</legend>
+        <legend>Fractionation Bias</legend>
         <ul style="list-style-type: none; padding: 0; margin: 0;">
             <li>
                 <label>Run:</label>
@@ -217,7 +217,7 @@
     </fieldset>
 
     <fieldset class="ui-widget-content ui-corner-all coge-section">
-        <legend style="color:#009900;">CodeML</legend>
+        <legend>CodeML</legend>
         <ul style="padding: 0; margin: 0;">
             <li>
                 <label>Calculate syntenic CDS pairs and color dots:</label>
@@ -226,7 +226,7 @@
                     <option value="ks" <tmpl_var name=ks1> >Synonymous (Ks)</option>
                     <option value="kn" <tmpl_var name=ks2> >Non-synonymous (Kn)</option>
                     <option value="kn_ks" <tmpl_var name=ks3>>Kn/Ks</option>
-                </select> substitution rates <small style="color:red">(SLOW)</small>
+                </select> substitution rates <span class="coge-badge coge-badge-warn">SLOW</span>
             </li>
             <li>
                 <label>Color scheme:</label>
@@ -255,13 +255,13 @@
                 <input type="checkbox" name="logks" value="true" id="logks" <tmpl_var name=logks> >
             </li>
             <li>
-                <small style="color:red">&nbsp;&nbsp;&nbsp;&nbsp; Only applicable to protein coding sequences (CDS vs. CDS)</small>
+                <small class="coge-warn-text">&nbsp;&nbsp;&nbsp;&nbsp; Only applicable to protein coding sequences (CDS vs. CDS)</small>
             </li>
         </ul>
     </fieldset>
 
     <fieldset class="ui-widget-content ui-corner-all coge-section">
-        <legend style="color:#009900">Advanced Options (
+        <legend>Advanced Options (
         <a href="../wiki/index.php/SynMap#Advanced_Options">see page docs</a>)</legend>
         <ul style="list-style-type: none; padding: 0; margin: 0;">
             <li>
@@ -290,7 +290,7 @@
 
         <!-- AKB Added/Modified 2016-10-18 -->
         <fieldset class="ui-widget-content ui-corner-all coge-section">
-            <legend style="color:#009900">Visualizer Select</legend>
+            <legend>Visualizer Select</legend>
             <ul>
                 <li>
                     <input id="visualizer_select" name="visualizer_select" checked="true" type="radio" value="synmap2" onClick="display_legacy_settings();" <TMPL_VAR SYNMAP2_SELECT> >
@@ -304,7 +304,7 @@
         </fieldset>
 
         <fieldset class="ui-widget-content ui-corner-all coge-section" id="synteny_vis_opts">
-            <legend style="color:#009900">SynMap2 options</legend>
+            <legend>SynMap2 options</legend>
             <ul>
                 <li>
                     <label>
@@ -316,7 +316,7 @@
         </fieldset>
 
         <fieldset class="ui-widget-content ui-corner-all coge-section" id="legacy_opts">
-            <legend style="color:#009900">Legacy options</legend>
+            <legend>Legacy options</legend>
             <ul>
                 <li>
                     <label>Regenerate dotplot images?</label>
@@ -356,7 +356,7 @@
                         <option value="inv" <tmpl_var name=color_type_inv> > Inversions </option>
                         <option value="diag" <tmpl_var name=color_type_diag> > Syntenic Block </option>
                     </select>
-                    <span class="small" style="color:red">Synonymous rates will supercede this option.</span>
+                    <span class="small coge-warn-text">Synonymous rates will supercede this option.</span>
                 </li>
                 <li>
                     <label>Dotplot axis metric:</label>
@@ -388,7 +388,7 @@
                     </label>
                     <input type="checkbox" name="assemble" id="assemble"  value="true" onclick="$('#assemble_info').toggle();" <tmpl_var name=syntenic_path>>
                     <div id="assemble_info" style="display: none;">
-                    <span class="small" style="color: red;">Options:
+                    <span class="small coge-warn-text">Options:
                         <label>Reference genome (to which the other genome is assembled) has</label>
                         <select id="spa_ref_genome" name="spa_ref_genome">
                             <option value="1" <tmpl_var name="spa_few_select"> >fewer</option>
@@ -407,7 +407,7 @@
                     <label>Your E-mail Address: </label>
                     <input type="email" name="email" id="email" onBlur="address_validity_check()"
                         value="<tmpl_var name=email>"></input>
-                    <span id="email_error" class="small" style="display: none; color: red;">You have supplied an invalid e-mail address.</span>
+                    <span id="email_error" class="small alert" style="display: none;">You have supplied an invalid e-mail address.</span>
                 <li>
                     <label>Job Title: </label>
                     <input type="text" name="jobtitle" id="jobtitle" />
@@ -419,7 +419,7 @@
     </div> <!-- close tab-3 -->
 </section> <!--close tabs section-->
 <div style="padding: 15px 0 5px 0;">
-    <span class="coge-button coge-button-danger coge-button-lg" id="synmap_go" >Generate SynMap</span>
+    <span class="coge-button coge-button-lg" id="synmap_go" >Generate SynMap</span>
 </div>
 </tmpl_if>
 

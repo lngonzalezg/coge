@@ -55,8 +55,15 @@ $.extend(Wizard.prototype, {
     },
 
     render: function(from) {
-        var titles = this.steps.map(function(step) {
-            return $("<div></div>", { text:  step.title });
+        // Three distinct step states (done/active/todo) — not derived from one
+        // boolean, so the stepper can style each on every property.
+        var current = this.currentIndex;
+        var titles = this.steps.map(function(step, i) {
+            var state = (i < current) ? "step-done" : (i === current) ? "step-active" : "step-todo";
+            var el = $("<div></div>", { "class": state });
+            $("<span></span>", { "class": "step-num", text: i + 1 }).appendTo(el);
+            $("<span></span>", { "class": "step-title", text: step.title }).appendTo(el);
+            return el;
         });
 
         this.tabs.html(titles);

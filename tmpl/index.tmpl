@@ -259,8 +259,8 @@ function load_latest(container, content) {
 
         entry = $("<h4></h4>")
             .html(added)
-            .css({"width": "10em", "color": "green"})
-            .addClass("inline");
+            .css({"width": "10em", "font-weight": "400", "font-size": "12px"})
+            .addClass("inline coge-code info");
 
         name = $("<a></a>", { href: content[i].url, text: content[i].organism });
         name.addClass("inline");
@@ -346,11 +346,12 @@ function plotResults(dataset, divID) {
         // Define data.
         var data = [all_trace, year_trace, month_trace, day_trace];
         // Define layout.
+        var mapWidth = $('#usage-map').width() || $(window).width() * 0.3;
         var layout = {
             //showlegend: false,
             //autosize: true,
-            width: $(window).width() * 0.45,
-            height: ($(window).width() * 0.45) * (1/2),
+            width: mapWidth,
+            height: mapWidth * (1/2),
             margin: {t: 0, b: 0, l: 0, r: 0, pad: 0},
             geo: {
                 scope: 'world',
@@ -374,7 +375,8 @@ function plotResults(dataset, divID) {
 
     // Event listener for resize events.
     window.addEventListener('resize', function() {
-        Plotly.relayout(divID, {width: $(window).width() * 0.45, height: ($(window).width() * 0.45) * (1/2)});
+        var w = $('#usage-map').width() || $(window).width() * 0.3;
+        Plotly.relayout(divID, {width: w, height: w * (1/2)});
     });
 
 }
@@ -394,45 +396,27 @@ Maintenance complete.  Please email the CoGe team if you experience any problems
 </div>-->
 
 <TMPL_IF NAME="INTRO">
-<div id="stats">
-    <ul class="horizontal bold center info" style="font-size:1.1em;">
-        <li>Organisms: <span style="color:green"><TMPL_VAR NAME="ORG_COUNT"></span></li>
-        <li>Genomes: <span style="color:green"><TMPL_VAR NAME="GEN_COUNT"></span></li>
-        <li>Features: <span style="color:green"><TMPL_VAR NAME="FEAT_COUNT"></span></li>
-        <!--<li>Annotations: <span style="color:green"><TMPL_VAR NAME="ANNOT_COUNT"></span></li>-->
-        <li>Experiments: <span style="color:green"><TMPL_VAR NAME="EXP_COUNT"></span></li>
-    </ul>
+<div id="stats" class="coge-stats">
+    <div><div class="coge-stat-n"><TMPL_VAR NAME="ORG_COUNT"></div><div class="coge-stat-label">Organisms</div></div>
+    <div><div class="coge-stat-n"><TMPL_VAR NAME="GEN_COUNT"></div><div class="coge-stat-label">Genomes</div></div>
+    <div><div class="coge-stat-n"><TMPL_VAR NAME="FEAT_COUNT"></div><div class="coge-stat-label">Features</div></div>
+    <!--<div><div class="coge-stat-n"><TMPL_VAR NAME="ANNOT_COUNT"></div><div class="coge-stat-label">Annotations</div></div>-->
+    <div><div class="coge-stat-n"><TMPL_VAR NAME="EXP_COUNT"></div><div class="coge-stat-label">Experiments</div></div>
 </div>
 
 <div class="wrapper">
-    <div id="intro">
-        <div class="coge-section-lg">
-            <h3>New to CoGe?</h3>
-            <div class="text">
-            CoGe is a platform for performing Comparative Genomics research.  It provides an open-ended network of interconnected tools to manage, analyze, and visualize next-gen data.
-            </div>
-            <br>
-            <ul class="horizontal">
-                <li>
-                    <a href="https://genomevolution.org/wiki/index.php/New_to_CoGe">Get started</a>
-                </li>
-                <li>
-                    <a href="https://genomevolution.org/wiki/index.php/How_to_get_a_CoGe_account">Create an Account</a>
-                </li>
-                <li>
-                    <a href="https://genomevolution.org/wiki/index.php/Tutorials">Tutorials</a>
-                </li>
-                <li>
-                    <a href="https://genomevolution.org/wiki">Documentation</a>
-                </li>
-                <li>
-                    <a href="https://genomevolution.org/wiki/index.php/FAQs">FAQ</a>
-                </li>
-            </ul>
-        </div>
-
         <div id="tools" class="coge-section-lg text">
-            <h3>Tools</h3>
+            <div class="coge-section-head">
+                <h3>Tools</h3>
+                <span class="coge-section-links">New to CoGe?
+                    <a href="https://genomevolution.org/wiki/index.php/New_to_CoGe">Get started</a> &middot;
+                    <a href="https://genomevolution.org/wiki/index.php/How_to_get_a_CoGe_account">Create an Account</a> &middot;
+                    <a href="https://genomevolution.org/wiki/index.php/Tutorials">Tutorials</a> &middot;
+                    <a href="https://genomevolution.org/wiki">Documentation</a> &middot;
+                    <a href="https://genomevolution.org/wiki/index.php/FAQs">FAQ</a>
+                </span>
+            </div>
+            <div id="tools-grid"></div>
         </div>
 <script>
     [
@@ -506,28 +490,29 @@ Maintenance complete.  Please email the CoGe team if you experience any problems
             url: 'LoadExperiment.pl'
     	}
     ].forEach(function(tool) {
-        var div = $('<div class="coge-summary"></div>').appendTo($('#tools'));
-        $('<a href="' + tool.url + '" class="l"><img src="' + tool.img + '" style="width:3em;height:3em;"></a>').appendTo(div);
-        var body = $('<div class="coge-summary-body"></div>').appendTo(div);
-        $('<h4 class="coge-summary-heading"><a href="' + tool.url + '">' + tool.name + '</a></h4>').appendTo(body);
-        $('<div style="padding-left:0">' + tool.description + '</div>').appendTo(body);
-        if (tool.example) {
-            $('<a href="' + tool.example + '">Example</a>').appendTo(body);
-            if (tool.docs)
-                body.append(document.createTextNode(' - '));
-        }
+        var div = $('<div class="coge-tool-card"></div>').appendTo($('#tools-grid'));
+        div.on('click', function(e) {
+            if (!$(e.target).closest('a').length)
+                window.location = tool.url;
+        });
+        var head = $('<div class="coge-tool-head"></div>').appendTo(div);
+        $('<span class="coge-tool-icon"><img src="' + tool.img + '"></span>').appendTo(head);
+        $('<h4><a href="' + tool.url + '">' + tool.name + '</a></h4>').appendTo(head);
+        $('<div class="coge-tool-desc">' + tool.description + '</div>').appendTo(div);
+        var links = $('<div class="coge-tool-links"></div>').appendTo(div);
+        if (tool.example)
+            $('<a href="' + tool.example + '">Example</a>').appendTo(links);
         if (tool.docs)
-            $('<a href="https://genomevolution.org/wiki/index.php/' + tool.docs + '" target="_blank">Documentation</a>').appendTo(body);
+            $('<a href="https://genomevolution.org/wiki/index.php/' + tool.docs + '" target="_blank">Documentation</a>').appendTo(links);
     });
 </script>
+
+    <div class="coge-home-row">
         <div class="coge-section-lg">
             <h3>Recently Added Public Genomes <small>(<a href="#" onclick="show_genomes(window.event)">more</a>)</small></h3>
             <div id="latest-genomes" class="padded small">
             </div>
         </div>
-    </div>
-
-    <div id="highlights">
         <div id="wikifeed" class="coge-section-lg text">
             <h3>Latest News</h3>
         </div>
@@ -536,10 +521,11 @@ Maintenance complete.  Please email the CoGe team if you experience any problems
 	    	<!--<iframe src="https://www.google.com/maps/d/embed?mid=zTAag14VR8dY.krU3JWBs4l5E" width="100%" height="250" frameborder="0" style="border:0"></iframe>-->
             <div id="usage-map" style="text-align: center; margin-left: auto; margin-right: auto;"></div>
 	    </div>
-        <div class="coge-section-lg">
-            <h3>Tutorials</h3>
-            <div id="crossfade"></div>
-        </div>
+    </div>
+
+    <div class="coge-section-lg">
+        <h3>Tutorials</h3>
+        <div id="crossfade" style="max-width:720px;"></div>
     </div>
     </TMPL_IF>
 </div>
