@@ -112,7 +112,13 @@ my $res = generate_dotplot(
     fid2           => $fid2
 );
 if ($res) {
-    $res =~ s/$DIR/$URL/;
+    # Security pass C1/C5 moved DIAGSDIR out of the web root to /scratch/coge/diags,
+    # so s/$DIR/$URL/ can no longer match dotplot output paths; map the DIAGSDIR
+    # prefix to the /coge/data/diags/ URL its Apache Alias serves it under instead.
+    my $diags_dir = $DIAGSDIR;
+    my $diags_url = $URL . 'data/diags';
+    $diags_dir =~ s{/+$}{};
+    $res =~ s{^\Q$diags_dir\E(?=/|$)}{$diags_url} or $res =~ s/$DIR/$URL/;
     #print STDERR $res,"\n";
     print $res if $url_only;
     print qq{Content-Type: text/html

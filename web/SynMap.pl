@@ -1381,10 +1381,9 @@ sub get_results {
 	$org_name1 .= " (v" . $genome1->version . ")";
 	$org_name2 .= " (v" . $genome2->version . ")";
 
-	my $out_url = $out;
-	$out_url =~ s/$DIR/$URL/;
-	$y_label =~ s/$DIR/$URL/;
-	$x_label =~ s/$DIR/$URL/;
+	my $out_url = _path_to_url($out);
+	$y_label = _path_to_url($y_label);
+	$x_label = _path_to_url($x_label);
 
 	$/ = "\n";
 	my $tmp;
@@ -1430,13 +1429,11 @@ sub get_results {
 
 	# dotplot
 	if ($ks_type) {
-		my $ks_blocks_file_url = $ks_blocks_file;
-		$ks_blocks_file_url =~ s/$DIR/$URL/;
+		my $ks_blocks_file_url = _path_to_url($ks_blocks_file);
 		$results->param( file_url => $ks_blocks_file_url );
 	}
 	else {
-		my $final_dagchainer_url = $final_dagchainer_file;
-		$final_dagchainer_url =~ s/$DIR/$URL/;
+		my $final_dagchainer_url = _path_to_url($final_dagchainer_file);
 		$results->param( file_url => $final_dagchainer_url );
 	}
 	$results->param( dsgid1 => $dsgid1 );
@@ -1458,7 +1455,7 @@ sub get_results {
 	if ($opts{spa} =~ /true/i) {
 		my $spa_path = $final_dagchainer_file . '.spa';
 		return encode_json( { error => "The output $spa_path could not be found." } ) unless (-r $spa_path);
-		$spa_path =~ s/$DIR/$URL/;
+		$spa_path = _path_to_url($spa_path);
 		$results->param( spa_url => $spa_path );
 	};
 
@@ -1468,8 +1465,7 @@ sub get_results {
 	my $fract_bias_raw_output_file;
 	my $fract_bias_results_file;
 	if ( $opts{frac_bias} =~ /true/i ) {
-		my $output_url = $result_path;
-		$output_url =~ s/$DIR/$URL/;
+		my $output_url = _path_to_url($result_path);
 		my $query_id;
 		my $target_id;
 		if ( $depth_org_1_ratio < $depth_org_2_ratio ) {
@@ -1719,7 +1715,7 @@ sub get_results {
 		msg  => qq{Dotplot JSON},
 	);
 
-	$dagchainer_file =~ s/^$URL/$DIR/;
+	$dagchainer_file = _url_to_path($dagchainer_file);
     
 	my $rows = [
 		{
@@ -1860,11 +1856,10 @@ sub get_results {
 	#    });
 	#}
 
-	my $log = $cogeweb->logfile;
-	$log            =~ s/$DIR/$URL/;
-	$json_file      =~ s/$DIR/$URL/;
-	$all_json_file  =~ s/$DIR/$URL/;
-	$hist_json_file =~ s/$DIR/$URL/;
+	my $log = _path_to_url( $cogeweb->logfile );
+	$json_file      = _path_to_url($json_file);
+	$all_json_file  = _path_to_url($all_json_file);
+	$hist_json_file = _path_to_url($hist_json_file);
 
 	$results->param( error   => $problem ) if $problem;
 	$results->param( warning => $warn )    if $warn;
@@ -1908,6 +1903,42 @@ sub get_results {
 	return encode_json( { html => $output } );
 }
 
+# Security pass C1/C5 moved TEMPDIR and DIAGSDIR out of the web root to
+# /scratch/coge/, where the historical unanchored s/$DIR/$URL/ prefix swap can
+# never match, so pages emitted raw filesystem paths as URLs (404s). Map each
+# relocated directory to the URL prefix its Apache Alias serves it under
+# (/coge/data/diags/ and TEMPURL), falling back to the COGEDIR mapping for
+# paths still inside the web root.
+sub _swap_prefix {
+	my ( $str, $from, $to ) = @_;
+	return unless defined $str and defined $from and length $from;
+	$from =~ s{/+$}{};
+	$to   =~ s{/+$}{} if defined $to;
+	return unless $str =~ m{^\Q$from\E(?:/|$)};
+	$str =~ s{^\Q$from\E}{$to};
+	return $str;
+}
+
+sub _path_to_url {
+	my $path = shift;
+	return $path unless defined $path;
+	my $mapped = _swap_prefix( $path, $DIAGSDIR, $URL . 'data/diags/' )
+		// _swap_prefix( $path, $config->{TEMPDIR}, $config->{TEMPURL} );
+	return $mapped if defined $mapped;
+	$path =~ s/$DIR/$URL/;
+	return $path;
+}
+
+sub _url_to_path {
+	my $url = shift;
+	return $url unless defined $url;
+	my $mapped = _swap_prefix( $url, $URL . 'data/diags/', $DIAGSDIR )
+		// _swap_prefix( $url, $config->{TEMPURL}, $config->{TEMPDIR} );
+	return $mapped if defined $mapped;
+	$url =~ s/^\Q$URL\E/$DIR/;
+	return $url;
+}
+
 sub _filename_to_link {
 	my %opts = (
 		styles   => "link",
@@ -1921,8 +1952,7 @@ sub _filename_to_link {
 	my $link;
 	if ( -r $file or $url ) {
 		if ( !$url ) {
-			$url = $opts{file};
-			$url =~ s/$DIR/$URL/;
+			$url = _path_to_url( $opts{file} );
 		}
 
 #		$link =
@@ -2062,7 +2092,7 @@ sub get_dotplot {
 	($url) = $content =~ /url=(.*?)"/is;
 	my $png = $url;
 	$png =~ s/html$/png/;
-	$png =~ s/$URL/$DIR/;
+	$png = _url_to_path($png);
 	my $img = GD::Image->new($png);
 	my ( $w, $h ) = $img->getBounds();
 	$w += 600;
