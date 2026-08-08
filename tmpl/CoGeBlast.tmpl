@@ -1,5 +1,4 @@
 <TMPL_IF NAME="MAIN">
-    <div id="results" class="padded hidden"></div>
   <tmpl_if name="BETA">
     <div class="small" style="padding-bottom: 5px; color: dimgray;">
         <span class="large">Welcome to the <span class="alert">new beta version</span> of CoGeBlast.</span><br>If you experience any difficulties
@@ -137,6 +136,9 @@
         <span class="coge-form-footer-context coge-genome-select-ctx">0 genomes selected</span>
     </div>
 
+    <!-- Results render below the setup so the form stays in place. -->
+    <div id="results" class="padded hidden" style="margin-top:1em;"></div>
+
     <tmpl_include name="/widgets/Overlay.tmpl">
 
     <div id="status_dialog" class="dialog_box hidden">
@@ -175,7 +177,7 @@
     </div>
 
     <script type="text/javascript" src="js/coge/utils.js"></script>
-    <script type="text/javascript" src="js/pages/blast.js?v=2"></script>
+    <script type="text/javascript" src="js/pages/blast.js?v=3"></script>
     <script type="text/javascript" src="./js/jquery.tablesorter.2.0.3.js"></script>
     <script>
     const PAGE_NAME     = '<TMPL_VAR NAME="PAGE_NAME">';

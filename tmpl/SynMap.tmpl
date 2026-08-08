@@ -19,15 +19,6 @@
     }
 </style>
 
-<tmpl_if name=results>
-    <div id="results">
-        <tmpl_var name=results>
-    </div>
-<tmpl_else>
-    <div id="results">
-    </div>
-</tmpl_if>
-
 <aside class="info">
     <p><a class="bold" href="http://genomevolution.org/wiki/index.php/SynMap2" target="_blank">SynMap</a> generates a syntenic dotplot between
     two organisms and identifies syntenic regions.
@@ -418,6 +409,16 @@
     <span class="coge-button coge-button-lg" id="synmap_go" >Generate SynMap</span>
     <span id="synmap_pair_ctx" class="coge-form-footer-context"></span>
 </div>
+
+<!-- Results render below the setup so the form stays in place. -->
+<tmpl_if name=results>
+    <div id="results" style="margin-top:1em;">
+        <tmpl_var name=results>
+    </div>
+<tmpl_else>
+    <div id="results" style="margin-top:1em;">
+    </div>
+</tmpl_if>
 </tmpl_if>
 
 <!-- partials -->
@@ -470,7 +471,7 @@
 <TMPL_INCLUDE NAME="widgets/Progress.tmpl">
 
 <!-- Load scripts last for speed -->
-<script src="js/pages/synmap.js?v=2"></script>
+<script src="js/pages/synmap.js?v=3"></script>
 <script src="js/coge/services.js"></script>
 <script src="js/coge/progress.js"></script>
 <script src="js/coge/utils.js"></script>

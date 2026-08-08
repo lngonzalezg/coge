@@ -750,7 +750,10 @@ function blastOff(dialog, results, basename) {
         }),
         success : function(response) {
             status_dialog.unbind().on("dialogclose", function() {
-                _results.removeClass('hidden').slideDown();
+                _results.removeClass('hidden').slideDown(function() {
+                    // results live below the setup form; bring them into view
+                    this.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
 
                 // reset dialog
                 status_dialog.find(".dialog-error,.dialog-complete").hide();

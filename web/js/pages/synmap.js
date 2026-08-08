@@ -43,9 +43,11 @@ function close_dialog(dialog) {
 }
 
 function load_results() {
-    $('#intro').hide();
     $('#log_text').hide();
-    $('#results').fadeIn();
+    // results live below the setup form; bring them into view
+    $('#results').fadeIn(function() {
+        this.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
 }
 
 // function update_params(val) {
