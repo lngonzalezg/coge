@@ -138,6 +138,8 @@ div.box { padding: 0 24px 70px; margin-top: 0; }
 .coge-header-menu { padding-top: 12px; }
 
 .coge-logo { color: var(--coge-green-8); font-size: 34px; }  /* wordmark kept as-is */
+/* Sit the wordmark's baseline on the search input's bottom edge. */
+.coge-header #brand { margin-top: 14px !important; }
 
 .coge-header-button > div,
 .coge-header-button a,
@@ -194,14 +196,115 @@ div.box { padding: 0 24px 70px; margin-top: 0; }
 .dropdown-item { padding: 8px 12px; border-radius: var(--coge-radius-sm); }
 .dropdown-item:hover { background-color: var(--coge-gray-0); }
 
+/* Advanced search: anchored panel, closes on click-outside/Esc. The trigger
+ * carries a count badge so filters stay visible when the panel is shut. */
+.coge-adv-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+.coge-adv-badge {
+  font-family: var(--coge-font-mono);
+  font-size: 11px;
+  background: var(--coge-green-8);
+  color: #fff;
+  border-radius: 9px;
+  min-width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+.coge-adv-badge.hidden { display: none; }
+
+#advanced_search { position: relative; }
 #coge-advanced-search {
   background-color: #fff;
-  border: 1px solid var(--coge-gray-3);
+  border: 1px solid var(--coge-gray-3) !important;
   border-radius: var(--coge-radius);
   box-shadow: var(--coge-shadow-md);
-  padding: 16px;
+  padding: 0;
+  margin-top: 8px;
+  width: 520px;
+  font-size: 14px;
+  left: 0;
+  right: auto;  /* open aligned with the advanced trigger */
 }
-#coge-advanced-search > div { border-top: 1px solid var(--coge-gray-3); }
+#coge-advanced-search > div { border-top: 0; margin-top: 0; padding-top: 0; }
+#coge-advanced-search input { width: auto; }
+
+.coge-adv-section { padding: 16px 18px 0; display: flex; flex-direction: column; gap: 12px; }
+.coge-adv-section:last-of-type { padding-bottom: 16px; }
+.coge-adv-mydata { border-top: 1px solid var(--coge-gray-1) !important; margin-top: 16px !important; padding-top: 14px !important; }
+.coge-adv-heading {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--coge-gray-6);
+}
+.coge-adv-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.coge-adv-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 11px;
+  border-radius: var(--coge-radius);
+  cursor: pointer;
+  border: 1px solid var(--coge-gray-3);
+  background: #fff;
+  color: var(--coge-gray-7);
+}
+.coge-adv-chip img { width: 14px; height: 14px; opacity: .55; }
+.coge-adv-chip:hover { border-color: var(--coge-gray-5); }
+.coge-adv-chip.on { border-color: var(--coge-green-8); background: var(--coge-green-0); color: var(--coge-green-9); }
+.coge-adv-chip.on img { opacity: 1; }
+
+.coge-adv-row { display: flex; align-items: center; gap: 12px; }
+.coge-adv-row > label { width: 110px; flex: none; font-size: 14px; color: var(--coge-gray-7); }
+.coge-adv-row > input { flex: 1; min-width: 0; }
+.coge-adv-eq { color: var(--coge-gray-5); flex: none; }
+
+.coge-adv-segment {
+  display: flex;
+  border: 1px solid var(--coge-gray-4);
+  border-radius: var(--coge-radius);
+  overflow: hidden;
+}
+.coge-adv-segment span {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 13px;
+  color: var(--coge-gray-7);
+  cursor: pointer;
+  border-left: 1px solid var(--coge-gray-3);
+}
+.coge-adv-segment span:first-child { border-left: 0; }
+.coge-adv-segment span.on { background: var(--coge-green-8); color: #fff; font-weight: 600; }
+
+.coge-adv-footer {
+  border-top: 1px solid var(--coge-gray-3) !important;
+  background: var(--coge-gray-0);
+  border-radius: 0 0 var(--coge-radius) var(--coge-radius);
+  padding: 12px 18px !important;
+  margin-top: 16px !important;
+}
+.coge-adv-preview {
+  font-family: var(--coge-font-mono);
+  font-size: 12px;
+  color: var(--coge-gray-6);
+  line-height: 1.5;
+  word-break: break-all;
+  margin-bottom: 12px;
+}
+.coge-adv-actions { display: flex; align-items: center; gap: 10px; }
+.coge-adv-clear { font-size: 13px; font-weight: 500; color: var(--coge-gray-6); cursor: pointer; margin-right: auto; }
+.coge-adv-clear:hover { color: var(--coge-gray-9); }
 
 /* ============================ 3. BUTTONS ================================= */
 

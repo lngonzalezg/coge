@@ -70,20 +70,47 @@ jQuery(document).ready(function(){
 			showDropdown('#' + id.slice(0,4) + '_drop');
 	});
 
-	$('#advanced_search').click(function(e){
-		$('#coge-advanced-search').slideDown('fast');
-		var e = $('#advanced_search').find('.dropdown-arrow');
-		if (e.attr('src') == 'picts/arrow-right-icon.png')
-			e.attr('src', 'picts/arrow-down-icon.png');
+	// Advanced search: toggle on the trigger, close on click-outside or Esc —
+	// never on mouseleave, which threw away everything the user had typed.
+	$('#advanced_search_label').click(function(e){
+		e.stopPropagation();
+		var panel = $('#coge-advanced-search');
+		if (panel.is(':visible'))
+			panel.hide();
+		else {
+			hideDropdowns();
+			panel.slideDown('fast');
+		}
 	});
+	$(document).on('click', function(e){
+		if (!$(e.target).closest('#advanced_search').length)
+			$('#coge-advanced-search').hide();
+	});
+	$(document).on('keydown', function(e){
+		if (e.which == 27)
+			$('#coge-advanced-search').hide();
+	});
+
+	// Chips and segment drive the hidden selects search() reads.
+	$('#adv_type_chips .coge-adv-chip').click(function(){
+		$('#advanced_search_type').val($(this).attr('data-value'));
+		adv_render();
+	});
+	$('.coge-adv-toggle').click(function(){
+		var sel = $('#' + $(this).attr('data-select'));
+		if (!sel.length) return;
+		sel.val(sel.val() == $(this).attr('data-on') ? $(this).attr('data-off') : $(this).attr('data-on'));
+		adv_render();
+	});
+	$('#adv_role_segment span').click(function(){
+		$('#search_role').val($(this).attr('data-value'));
+		adv_render();
+	});
+	$('#search_tag, #search_feature_type, #search_metadata_key, #search_metadata_value, #header_search_text').on('input', adv_render);
+	adv_render();
 
     $('.dropdown-label').mouseleave(function(e){
        	if (e.relatedTarget && !e.relatedTarget.closest('.dropdown-menu'))
-       	    hideDropdowns();
-    });
-    
-    $('#advanced_search').mouseleave(function(e){
-       	if (e.relatedTarget && !e.relatedTarget.closest('#coge-advanced-search'))
        	    hideDropdowns();
     });
 
@@ -144,79 +171,118 @@ function add_button_states (ids) {
         setup_button_states(ids[i]);
 }
 
-function search() {
-	var text = $('#header_search_text').val();
-	if ($('#coge-advanced-search').css('display') == 'block') {
-		var terms = [];
-		if (text) {
-			var index = text.indexOf('::');
-			while (index != -1) {
-				var start = index;
-				while (start > 0 && text.charAt(start) != ' ' && text.charAt(start) != '"')
-					--start;
-				var c = start > 0 ? text.charAt(start) : ' ';
-				while (start > 1 && text.charAt(start - 1) == ' ')
-					--start;
-				var end = index + 2;
-				while (end < text.length && text.charAt(end) != c)
-					++end;
-				while (end < text.length && text.charAt(end) == ' ')
-					++end;
-				text = start > 0 && end < text.length ? text.substring(0, start) + ' ' + text.substring(end) : start > 0 ? text.substring(0, start) : text.substring(end);
-				index = text.indexOf('::');
-			}
-			text = text.trim();
-			if (text)
-				terms.push(text);
-		}
-		var type = $('#advanced_search_type').val();
-		if (type != 'any')
-			terms.push('type::' + type);
-		var certified = $('#search_certified').val();
-		if (certified != 'any')
-			terms.push('certified::' + (certified == 'yes' ? '1' : '0'));
+// Pull key::value terms out of free text — they belong to the panel fields.
+function strip_adv_terms(text) {
+	if (!text) return '';
+	var index = text.indexOf('::');
+	while (index != -1) {
+		var start = index;
+		while (start > 0 && text.charAt(start) != ' ' && text.charAt(start) != '"')
+			--start;
+		var c = start > 0 ? text.charAt(start) : ' ';
+		while (start > 1 && text.charAt(start - 1) == ' ')
+			--start;
+		var end = index + 2;
+		while (end < text.length && text.charAt(end) != c)
+			++end;
+		while (end < text.length && text.charAt(end) == ' ')
+			++end;
+		text = start > 0 && end < text.length ? text.substring(0, start) + ' ' + text.substring(end) : start > 0 ? text.substring(0, start) : text.substring(end);
+		index = text.indexOf('::');
+	}
+	return text.trim();
+}
+
+// Same terms, same order, as the old inline search() logic — the panel and
+// the live preview both build from here, so what you see is what runs.
+function build_adv_terms() {
+	var terms = [];
+	var type = $('#advanced_search_type').val();
+	if (type != 'any')
+		terms.push('type::' + type);
+	var certified = $('#search_certified').val();
+	if (certified != 'any')
+		terms.push('certified::' + (certified == 'yes' ? '1' : '0'));
 <TMPL_IF NAME="LOGON">
-		var deleted = $('#search_deleted').val();
-		if (deleted == 'yes')
-			terms.push('deleted::1');
-		var favorite = $('#search_favorite').val();
-		if (favorite != 'any')
-			terms.push('favorite::1');
+	var deleted = $('#search_deleted').val();
+	if (deleted == 'yes')
+		terms.push('deleted::1');
+	var favorite = $('#search_favorite').val();
+	if (favorite != 'any')
+		terms.push('favorite::1');
 </TMPL_IF>
-		var feature_type = $('#search_feature_type').val();
-		if (feature_type)
-			terms.push('feature_type::' + feature_type);
-		var metadata_key = $('#search_metadata_key').val();
-		if (metadata_key)
-			terms.push('metadata_key::' + metadata_key);
-		var metadata_value = $('#search_metadata_value').val();
-		if (metadata_value)
-			if (metadata_value.indexOf(' ') != -1)
-				terms.push('"metadata_value::' + metadata_value + '"');
-			else
-				terms.push('metadata_value::' + metadata_value);
-<TMPL_IF NAME="LOGON">
-		var restricted = $('#search_restricted').val();
-		if (restricted != 'any')
-			terms.push('restricted::' + (restricted == 'yes' ? '1' : '0'));
-		var role = $('#search_role').val();
-		if (role != 'any')
-			terms.push('role::' + role);
-</TMPL_IF>
-		var tag = $('#search_tag').val();
-		if (tag)
-			if (tag.indexOf(' ') != -1)
-				terms.push('"tag::' + tag + '"');
-			else
-				terms.push('tag::' + tag);
-		if (terms.length)
-			window.location.href = 'SearchResults.pl?s=' + terms.join(' ');
+	var feature_type = $('#search_feature_type').val();
+	if (feature_type)
+		terms.push('feature_type::' + feature_type);
+	var metadata_key = $('#search_metadata_key').val();
+	if (metadata_key)
+		terms.push('metadata_key::' + metadata_key);
+	var metadata_value = $('#search_metadata_value').val();
+	if (metadata_value)
+		if (metadata_value.indexOf(' ') != -1)
+			terms.push('"metadata_value::' + metadata_value + '"');
 		else
-			alert('Search not specified');
-	} else if (text)
-		window.location.href = "SearchResults.pl?s=" + text;
+			terms.push('metadata_value::' + metadata_value);
+<TMPL_IF NAME="LOGON">
+	var restricted = $('#search_restricted').val();
+	if (restricted != 'any')
+		terms.push('restricted::' + (restricted == 'yes' ? '1' : '0'));
+	var role = $('#search_role').val();
+	if (role != 'any')
+		terms.push('role::' + role);
+</TMPL_IF>
+	var tag = $('#search_tag').val();
+	if (tag)
+		if (tag.indexOf(' ') != -1)
+			terms.push('"tag::' + tag + '"');
+		else
+			terms.push('tag::' + tag);
+	return terms;
+}
+
+function search() {
+	// Filters apply whether or not the panel is open — the count badge on the
+	// trigger is the indicator that they are set.
+	var text = strip_adv_terms($('#header_search_text').val());
+	var terms = build_adv_terms();
+	if (text)
+		terms.unshift(text);
+	if (terms.length)
+		window.location.href = 'SearchResults.pl?s=' + terms.join(' ');
 	else
 		alert('Search not specified');
+}
+
+// Paint chips/segment from the selects, refresh badge and query preview.
+function adv_render() {
+	var typeVal = $('#advanced_search_type').val();
+	$('#adv_type_chips .coge-adv-chip').each(function(){
+		$(this).toggleClass('on', $(this).attr('data-value') == typeVal);
+	});
+	$('.coge-adv-toggle').each(function(){
+		var sel = $('#' + $(this).attr('data-select'));
+		$(this).toggleClass('on', sel.length > 0 && sel.val() == $(this).attr('data-on'));
+	});
+	var roleVal = $('#search_role').length ? $('#search_role').val() : null;
+	$('#adv_role_segment span').each(function(){
+		$(this).toggleClass('on', $(this).attr('data-value') == roleVal);
+	});
+	var terms = build_adv_terms();
+	$('#adv_filter_count').text(terms.length).toggleClass('hidden', terms.length == 0);
+	var text = strip_adv_terms($('#header_search_text').val() || '');
+	var all = text ? [text].concat(terms) : terms;
+	$('#adv_query_preview').text('s=' + all.join(' '));
+}
+
+function clear_advanced_search() {
+	$('#advanced_search_type').val('any');
+	$('#search_certified').val('any');
+	$('#search_deleted').val('no');
+	$('#search_favorite').val('any');
+	$('#search_restricted').val('any');
+	$('#search_role').val('any');
+	$('#search_tag, #search_feature_type, #search_metadata_key, #search_metadata_value').val('');
+	adv_render();
 }
 
 function updateAdvancedSearch() {
@@ -230,6 +296,7 @@ function updateAdvancedSearch() {
 		if (QUERY[opt])
 			$('#search_' + opt).val(QUERY[opt]);
 	});
+	adv_render();
 }
 
 function searchKey(event) {
@@ -284,75 +351,105 @@ function hideDropdowns() {
 				    </div>
 				</li>
 				<li id="advanced_search" class="coge-header-button">
-					<div id="advanced_search_label">
+					<div id="advanced_search_label" class="coge-adv-trigger">
 						<a>advanced</a>
-						<img class="dropdown-arrow" src="picts/arrow-right-icon.png">
+						<span id="adv_filter_count" class="coge-adv-badge hidden"></span>
 					</div>
-					<div id="coge-advanced-search" class="text">
-						<table>
-							<tr><td>type:</td><td>
-								<select id="advanced_search_type">
-									<option>any</option>
-									<option>experiment</option>
-									<option>feature</option>
-									<option>genome</option>
-									<option>notebook</option>
-									<option>organism</option>
-								</select>
-							</td></tr>
-							<tr><td>certified:</td><td>
-								<select id="search_certified">
-									<option>any</option>
-									<option>yes</option>
-									<option>no</option>
-								</select>
-							</td></tr>
+					<div id="coge-advanced-search" class="text coge-adv-panel">
+						<div class="coge-adv-section">
+							<div class="coge-adv-heading">Type</div>
+							<div id="adv_type_chips" class="coge-adv-chips">
+								<span class="coge-adv-chip" data-value="any"><img src="picts/CoGe.svg">Any</span>
+								<span class="coge-adv-chip" data-value="genome"><img src="picts/dna-icon.png">Genomes</span>
+								<span class="coge-adv-chip" data-value="organism"><img src="picts/Organism.svg">Organisms</span>
+								<span class="coge-adv-chip" data-value="feature"><img src="picts/feature-icon.png">Features</span>
+								<span class="coge-adv-chip" data-value="experiment"><img src="picts/testtube-icon.png">Experiments</span>
+								<span class="coge-adv-chip" data-value="notebook"><img src="picts/notebook-icon.png">Notebooks</span>
+							</div>
+						</div>
+						<div class="coge-adv-section">
+							<div class="coge-adv-heading">Refine</div>
+							<div class="coge-adv-row">
+								<label for="search_tag">Tag</label>
+								<input id="search_tag" type="text" placeholder="Any tag" />
+							</div>
+							<div class="coge-adv-row">
+								<label for="search_feature_type">Feature type</label>
+								<input id="search_feature_type" type="text" class="coge-code" />
+							</div>
+							<div class="coge-adv-row">
+								<label for="search_metadata_key">Metadata</label>
+								<input id="search_metadata_key" type="text" class="coge-code" placeholder="key" />
+								<span class="coge-adv-eq">=</span>
+								<input id="search_metadata_value" type="text" class="coge-code" placeholder="value" />
+							</div>
+						</div>
+						<div class="coge-adv-section coge-adv-mydata">
 <TMPL_IF NAME="LOGON">
-							<tr><td>deleted:</td><td>
-								<select id="search_deleted">
-									<option>no</option>
-									<option>yes</option>
-								</select>
-							</td></tr>
-							<tr><td>favorite:</td><td>
-								<select id="search_favorite">
-									<option>any</option>
-									<option>yes</option>
-								</select>
-							</td></tr>
+							<div class="coge-adv-heading">My data</div>
+							<div class="coge-adv-row">
+								<label>My role</label>
+								<div id="adv_role_segment" class="coge-adv-segment">
+									<span data-value="any">Any</span>
+									<span data-value="owner">Owner</span>
+									<span data-value="editor">Editor</span>
+									<span data-value="reader">Reader</span>
+								</div>
+							</div>
 </TMPL_IF>
-							<tr><td>feature type:</td><td>
-								<input id="search_feature_type" />
-							</td></tr>
-							<tr><td>metadata key:</td><td>
-								<input id="search_metadata_key" />
-							</td></tr>
-							<tr><td>metadata value:</td><td>
-								<input id="search_metadata_value" />
-							</td></tr>
+							<div class="coge-adv-chips">
+								<span class="coge-adv-chip coge-adv-toggle" data-select="search_certified" data-on="yes" data-off="any">Certified</span>
 <TMPL_IF NAME="LOGON">
-							<tr><td>restricted:</td><td>
-								<select id="search_restricted">
-									<option>any</option>
-									<option>yes</option>
-									<option>no</option>
-								</select>
-							</td></tr>
-							<tr><td>my role:</td><td>
-								<select id="search_role">
-									<option>any</option>
-									<option>owner</option>
-									<option>editor</option>
-									<option>reader</option>
-								</select>
-							</td></tr>
+								<span class="coge-adv-chip coge-adv-toggle" data-select="search_favorite" data-on="yes" data-off="any">Favorites</span>
+								<span class="coge-adv-chip coge-adv-toggle" data-select="search_restricted" data-on="yes" data-off="any">Restricted</span>
+								<span class="coge-adv-chip coge-adv-toggle" data-select="search_deleted" data-on="yes" data-off="no">Deleted</span>
 </TMPL_IF>
-							<tr><td>tag:</td><td>
-								<input id="search_tag" />
-							</td></tr>
-						</table>
-						<div>
-							<button onclick="search();" style="float:right;">search</button>
+							</div>
+						</div>
+						<div class="coge-adv-footer">
+							<div id="adv_query_preview" class="coge-adv-preview"></div>
+							<div class="coge-adv-actions">
+								<span class="coge-adv-clear" onclick="clear_advanced_search();">Clear all</span>
+								<span class="coge-button" onclick="search();">Search</span>
+							</div>
+						</div>
+						<!-- Data model: search()/updateAdvancedSearch() read and write these;
+						     the chips and segment above mirror them. -->
+						<div class="hidden">
+							<select id="advanced_search_type">
+								<option>any</option>
+								<option>experiment</option>
+								<option>feature</option>
+								<option>genome</option>
+								<option>notebook</option>
+								<option>organism</option>
+							</select>
+							<select id="search_certified">
+								<option>any</option>
+								<option>yes</option>
+								<option>no</option>
+							</select>
+<TMPL_IF NAME="LOGON">
+							<select id="search_deleted">
+								<option>no</option>
+								<option>yes</option>
+							</select>
+							<select id="search_favorite">
+								<option>any</option>
+								<option>yes</option>
+							</select>
+							<select id="search_restricted">
+								<option>any</option>
+								<option>yes</option>
+								<option>no</option>
+							</select>
+							<select id="search_role">
+								<option>any</option>
+								<option>owner</option>
+								<option>editor</option>
+								<option>reader</option>
+							</select>
+</TMPL_IF>
 						</div>
 					</div>
 				</li>
