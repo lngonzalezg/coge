@@ -34,6 +34,7 @@ class TocPanel {
 
     setCount(itemType, count) {
         var item = this._getItem(itemType);
+        item.find('.coge-item-count').remove(); // replace, don't accumulate
         var span = $('<span></span>').html(count).addClass('coge-item-count').css('display', 'inline');
         item.append(span);
     }

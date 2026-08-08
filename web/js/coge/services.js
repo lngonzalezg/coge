@@ -42,8 +42,9 @@ var coge = window.coge = (function(namespace) {
 			return this._ajax("POST", this.baseUrl + "groups/" + group_id + "/users/remove", user_ids);
 		},
 		
-		search_global: function(search_term) {
-			return this._ajax("GET", this.baseUrl + "global/search/" + encodeURIComponent(search_term) + "/");
+		search_global: function(search_term, opts) {
+			// opts may carry limit/offset so the UI can fetch one page at a time
+			return this._ajax("GET", this.baseUrl + "global/search/" + encodeURIComponent(search_term) + "/", null, opts);
 		},
 		
 		search_organisms: function(search_term) {

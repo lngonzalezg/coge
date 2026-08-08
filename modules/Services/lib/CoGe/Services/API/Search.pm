@@ -25,14 +25,25 @@ sub search {
 		$show_users = 1;
     }
 
+    # Optional paging (per result category): the UI requests one page at a
+    # time instead of everything up to the server-side cap.
+    my $limit  = $self->param('limit');
+    my $offset = $self->param('offset');
+    $limit  = (defined $limit  && $limit  =~ /^\d+$/) ? int($limit)  : undef;
+    $offset = (defined $offset && $offset =~ /^\d+$/) ? int($offset) : undef;
+
+    my %fetched; # per-category pre-filter window fill, drives UI paging
     my @results = CoGe::Core::Search::search(
-        db => $db, 
-        user => $user, 
-        search_term => $search_term, 
-        show_users => $show_users
+        db => $db,
+        user => $user,
+        search_term => $search_term,
+        show_users => $show_users,
+        limit => $limit,
+        offset => $offset,
+        fetched => \%fetched
     );
 
-    $self->render(json => { results => \@results });
+    $self->render(json => { results => \@results, fetched => \%fetched });
 }
 
 1;

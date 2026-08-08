@@ -63,6 +63,13 @@ $(function () {
 		grid: new DataGrid({
 			element: $('#contents_panel').find('.grid'),
 			height: $(window).height() - 210, // this depends on the height of the header/footer and should be passed in as an argument
+			options: { // paginate the results instead of one endless scroll
+				paging: true,
+				pageLength: 100,
+				lengthChange: false,
+				info: true,
+				dom: 'rtip'
+			},
 			columns: [
                 { 	title: "",
 	            	targets: 0,
@@ -105,6 +112,7 @@ $(function () {
 			contentPanel.grid.search(''); // clear search filter
 			infoPanel.update(null);
 			$('#search_input').val(''); //FIXME move into ContentPanel
+			update_load_more(typeId);
 		}
 	});
 
@@ -112,7 +120,106 @@ $(function () {
 		contentPanel.grid.search( $(this).val() );
 		contentPanel.renderTitle();
 	});
+
+	// When the visible grid page is the last one loaded, pull the next server
+	// page so pagination continues seamlessly across fetches.
+	contentPanel.grid.dataTable.on('draw.dt', function() {
+		var type = tocPanel.selectedTypeId;
+		if (!type)
+			return;
+		var info = contentPanel.grid.dataTable.api().page.info();
+		if (info.pages > 0 && info.page >= info.pages - 1)
+			maybe_load_more(type);
+	});
 });
+
+// Server-side paging: fetch one page per category at a time so a broad term
+// doesn't make the database produce (and the browser download) thousands of
+// rows up front. "Load more" appends the next page for the selected category.
+var SEARCH_PAGE_SIZE = 100;
+var rawResults = {};    // type -> raw result objects fetched so far
+var typePages = {};     // type -> number of server pages fetched
+var typeExhausted = {}; // type -> true once a page came back empty
+var loadingMore = false;
+
+var typeMayHaveMore = {}; // type -> last server window was full (pre-access-filter)
+
+// The server reports how many rows each category's SQL window produced BEFORE
+// access filtering — a full window means more pages may exist even when the
+// visible count is short of the page size.
+function record_fetched(response, onlyType) {
+	var fetched = (response && response.fetched) || {};
+	var limit = fetched._limit || SEARCH_PAGE_SIZE;
+	var types = onlyType ? [onlyType] : ['genome', 'organism', 'feature', 'experiment', 'notebook', 'group'];
+	types.forEach(function(t) {
+		var apiT = (t == 'group' ? 'group' : t);
+		if (fetched.hasOwnProperty(apiT))
+			typeMayHaveMore[t] = fetched[apiT] >= limit;
+		else if (onlyType || rawResults[t])
+			typeMayHaveMore[t] = false;
+	});
+}
+
+// A category with a full server window probably has more: label it "100+" so
+// an exact page-size count doesn't read as a suspicious total.
+function count_label(type) {
+	var n = rawResults[type] ? rawResults[type].length : 0;
+	var more = !typeExhausted[type] && typeMayHaveMore[type];
+	return more ? n + '+' : n;
+}
+
+// Fetch the next server page when the user reaches the last loaded grid page,
+// so DataTables' Next button keeps working until the category is exhausted.
+function maybe_load_more(type) {
+	if (loadingMore || !type || typeExhausted[type])
+		return;
+	if (typeMayHaveMore[type])
+		load_more_results();
+}
+
+function update_load_more(type) {
+	var show = rawResults[type] && !typeExhausted[type] && typeMayHaveMore[type];
+	$('#load_more_button').toggleClass('hidden', !show);
+}
+
+function load_more_results() {
+	var type = tocPanel.selectedTypeId;
+	if (!type || !rawResults[type])
+		return;
+	var apiType = (type == 'group' ? 'usergroup' : type); // TOC label vs query key
+	loadingMore = true;
+	$('#load_more_button').addClass('hidden');
+	$('#refresh_label').removeClass('hidden');
+	coge.services.search_global(SEARCH_TEXT + ' type::' + apiType,
+			{ limit: SEARCH_PAGE_SIZE, offset: (typePages[type] || 1) * SEARCH_PAGE_SIZE })
+		.done(function(response) {
+			$('#refresh_label').addClass('hidden');
+			typePages[type] = (typePages[type] || 1) + 1;
+			record_fetched(response, type);
+			var newItems = (response && response.results) ? response.results : [];
+			if (!typeMayHaveMore[type])
+				typeExhausted[type] = true;
+			if (newItems.length) {
+				var seen = {};
+				rawResults[type].forEach(function(o) { seen[o.id] = 1; });
+				newItems = newItems.filter(function(o) { return !seen[o.id]; });
+				var api = contentPanel.grid.dataTable.api();
+				var page = api.page(); // re-render resets to page 1; put the user back
+				rawResults[type] = rawResults[type].concat(newItems);
+				contentPanel.setData(type, rawResults[type]);
+				contentPanel.setView(type).render();
+				contentPanel.grid.dataTable.api().page(page).draw(false);
+			}
+			tocPanel.setCount(type, count_label(type));
+			loadingMore = false;
+			update_load_more(type);
+		})
+		.fail(function() {
+			$('#refresh_label').addClass('hidden');
+			loadingMore = false;
+			update_load_more(type);
+		});
+}
 
 function search_stuff(search_term) {
 	if (!search_term || search_term.length <= 2) {
@@ -124,7 +231,7 @@ function search_stuff(search_term) {
 	$("#msg,#bottom-panel").hide();
 	$("#loading").show();
 
-	coge.services.search_global(search_term)
+	coge.services.search_global(search_term, { limit: SEARCH_PAGE_SIZE })
 		.done(function(response) {
 			if (!response || !response.results || !response.results.length) {
 				$("#loading").hide();
@@ -133,18 +240,24 @@ function search_stuff(search_term) {
 			}
 
             // Index results by type
-            var resultsByType = [];
+            var resultsByType = {};
 			for (var i = 0; i < response.results.length; i++) {
                 var o = response.results[i];
                 if (!resultsByType[o.type])
                     resultsByType[o.type] = [];
                 resultsByType[o.type].push(o);
 			}
-			//console.log(resultsByType);
+			rawResults = resultsByType;
+			typePages = {};
+			typeExhausted = {};
+			typeMayHaveMore = {};
+			for (var t in resultsByType)
+				typePages[t] = 1;
+			record_fetched(response);
 
 			for (var type in resultsByType) {
 			    contentPanel.setData(type, resultsByType[type]);
-			    tocPanel.setCount(type, resultsByType[type].length);
+			    tocPanel.setCount(type, count_label(type));
 			}
 
             var firstType = Object.keys(resultsByType)[0];

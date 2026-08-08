@@ -872,6 +872,50 @@ span.infobox { background-color: var(--coge-green-0); border-color: var(--coge-g
 }
 .coge-mydata-right #info_panel { border-top: 0; margin: 0; padding: 0; color: var(--coge-gray-7); }
 
+/* DataTables pagination (search results grid) */
+.dataTables_wrapper .dataTables_info {
+  font-size: 12px;
+  color: var(--coge-gray-6);
+  padding: 10px 0;
+}
+.dataTables_wrapper .dataTables_paginate {
+  padding: 8px 0;
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--coge-gray-3) !important;
+  border-radius: var(--coge-radius);
+  background: #fff !important;
+  color: var(--coge-gray-7) !important;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+  border-color: var(--coge-gray-5) !important;
+  background: var(--coge-gray-0) !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+  border-color: var(--coge-green-8) !important;
+  background: var(--coge-green-0) !important;
+  color: var(--coge-green-9) !important;
+  font-weight: 600;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+  color: var(--coge-gray-4) !important;
+  cursor: default;
+}
+
 /* ============================ 9. HOME ==================================== */
 
 .coge-stats,

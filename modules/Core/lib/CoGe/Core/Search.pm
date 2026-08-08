@@ -182,6 +182,19 @@ sub search {
 	my $user		= $opts{user};
 	my $show_users	= $opts{show_users};
 
+	# Per-category paging: rows/offset are applied in SQL so the database only
+	# produces the requested window. limit is clamped to the server-side cap.
+	my $limit  = $opts{limit};
+	$limit = $MAX_RESULTS_PER_TYPE if !defined($limit) || $limit <= 0 || $limit > $MAX_RESULTS_PER_TYPE;
+	my $offset = $opts{offset};
+	$offset = 0 if !defined($offset) || $offset < 0;
+
+	# Optional out-param: rows each category's SQL window produced BEFORE access
+	# filtering. A full window means more pages may exist even if the visible
+	# (post-filter) count is short; the UI uses this to drive its paging.
+	my $fetched = $opts{fetched};
+	$fetched->{_limit} = $limit if $fetched;
+
 	my $query = parse_query($search_term, $user);
 	my $type = $query->{'type'};
 
@@ -193,9 +206,10 @@ sub search {
 	if ((!$type || $type eq 'genome') && contains_none_of($query, ['feature_type', 'tag'])) {
 		my $conditions = build_conditions(['me.name', 'me.description', 'me.genome_id', 'organism.name', 'organism.description'],  $query->{'search_terms'});
 		# prefetch (not just join): info() reads organism per row, which was an N+1
-		my $rs = do_search('Genome', $conditions, { prefetch => 'organism', rows => $MAX_RESULTS_PER_TYPE }, $query, $db, $user);
+		my $rs = do_search('Genome', $conditions, { prefetch => 'organism', rows => $limit, offset => $offset, order_by => 'me.genome_id' }, $query, $db, $user);
 		if ($rs) {
 			my @genomes = sort info_cmp $rs->all();
+			$fetched->{genome} = scalar(@genomes) if $fetched;
 			push_results(\@results, \@genomes, 'genome', $user, 'has_access_to_genome', $favorites);
 		}
 	}
@@ -203,7 +217,8 @@ sub search {
     # Organisms
 	if ((!$type || $type eq 'organism') && $query->{'search_terms'} && contains_none_of($query, ['certified', 'deleted', 'favorite', 'feature_type', 'restricted', 'metadata_key', 'metadata_value', 'role', 'tag'])) {
 		my $conditions = build_conditions(['me.name', 'me.description', 'me.organism_id'],  $query->{'search_terms'});
-		my @organisms = $db->resultset("Organism")->search( { -and => $conditions } );
+		my @organisms = $db->resultset("Organism")->search( { -and => $conditions }, { rows => $limit, offset => $offset, order_by => 'me.organism_id' } );
+		$fetched->{organism} = scalar(@organisms) if $fetched;
 		foreach ( sort { lc($a->name) cmp lc($b->name) } @organisms ) {
 			push @results, {
 				'type' => 'organism',
@@ -217,9 +232,10 @@ sub search {
     # Experiments
 	if ((!$type || $type eq 'experiment') && contains_none_of($query, ['certified', 'feature_type'])) {
 		my $conditions = build_conditions(['me.name', 'me.description', 'me.experiment_id', 'genome.name', 'genome.description', 'organism.name', 'organism.description'],  $query->{'search_terms'});
-		my $rs = do_search('Experiment', $conditions, { prefetch => { 'genome' => 'organism' }, rows => $MAX_RESULTS_PER_TYPE }, $query, $db, $user);
+		my $rs = do_search('Experiment', $conditions, { prefetch => { 'genome' => 'organism' }, rows => $limit, offset => $offset, order_by => 'me.experiment_id' }, $query, $db, $user);
 		if ($rs) {
 			my @experiments = sort info_cmp $rs->all();
+			$fetched->{experiment} = scalar(@experiments) if $fetched;
 			push_results(\@results, \@experiments, 'experiment', $user, 'has_access_to_experiment', $favorites);
 		}
 	}
@@ -227,9 +243,10 @@ sub search {
     # Notebooks
 	if ((!$type || $type eq 'notebook') && contains_none_of($query, ['certified', 'feature_type', 'tag'])) {
 		my $conditions = build_conditions(['name', 'description', 'list_id'],  $query->{'search_terms'});
-		my $rs = do_search('List', $conditions, { rows => $MAX_RESULTS_PER_TYPE }, $query, $db, $user);
+		my $rs = do_search('List', $conditions, { rows => $limit, offset => $offset, order_by => 'me.list_id' }, $query, $db, $user);
 		if ($rs) {
 			my @notebooks = sort { lc($a->name) cmp lc($b->name) } $rs->all();
+			$fetched->{notebook} = scalar(@notebooks) if $fetched;
 			push_results(\@results, \@notebooks, 'notebook', $user, 'has_access_to_notebook', $favorites);
 		}
 	}
@@ -237,9 +254,10 @@ sub search {
     # User groups
 	if ($show_users && (!$type || $type eq 'usergroup') && contains_none_of($query, ['certified', 'favorite', 'feature_type', 'restricted', 'metadata_key', 'metadata_value', 'role', 'tag'])) {
 		my $conditions = build_conditions(['name', 'description', 'user_group_id'],  $query->{'search_terms'});
-		my $rs = do_search('UserGroup', $conditions, { rows => $MAX_RESULTS_PER_TYPE }, $query, $db, $user);
+		my $rs = do_search('UserGroup', $conditions, { rows => $limit, offset => $offset, order_by => 'me.user_group_id' }, $query, $db, $user);
 		if ($rs) {
 			my @user_groups = sort info_cmp $rs->all();
+			$fetched->{group} = scalar(@user_groups) if $fetched;
 			push_results(\@results, \@user_groups, 'group', $user, undef, $favorites);
 		}
 	}
@@ -267,7 +285,7 @@ sub search {
 		# through the join fanout and GROUP BY (which must otherwise complete
 		# before any LIMIT applies).
 		my $sql = 'SELECT fn.name,feature.feature_id,' . $ft_col . ',organism.name,data_source.name,genome.version,genomic_sequence_type.name ' .
-			'FROM (SELECT name,feature_id FROM feature_name WHERE MATCH(name) AGAINST (?) LIMIT ' . int($MAX_RESULTS_PER_TYPE) . ') AS fn ' .
+			'FROM (SELECT name,feature_id FROM feature_name WHERE MATCH(name) AGAINST (?) LIMIT ' . int($offset) . ',' . int($limit) . ') AS fn ' .
 				'JOIN feature USING(feature_id) ';
 		push @bind, (join ',', @{$query->{'search_terms'}});
 		$sql .= 'JOIN feature_type USING(feature_type_id) ' unless $feature_type;
@@ -285,6 +303,7 @@ sub search {
 		}
 		$sql .= 'GROUP BY fn.name,feature.feature_id';
 		my $rows = $dbh->selectall_arrayref($sql, undef, @bind);
+		$fetched->{feature} = scalar(@$rows) if $fetched;
 
 		foreach (@$rows) { #TODO use fetchall_hashref and map for performance improvement, mdb 12/22/16
 			push @results, {

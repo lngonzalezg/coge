@@ -2,12 +2,12 @@
 <script type="text/javascript" src="js/vendor/datatables/media/js/jquery.dataTables.min.js"></script>
 <script type="text/javascript" src="js/coge/datagrid.js"></script>
 <script type="text/javascript" src="js/coge/infopanel.js"></script>
-<script type="text/javascript" src="js/coge/tocpanel.js"></script>
+<script type="text/javascript" src="js/coge/tocpanel.js?v=2"></script>
 <script type="text/javascript" src="js/coge/contentpanel.js"></script>
 <script type="text/javascript" src="js/coge/utils.js"></script>
-<script type="text/javascript" src="js/coge/services.js"></script>
+<script type="text/javascript" src="js/coge/services.js?v=2"></script>
 <script type="text/javascript" src="js/pages/user-common.js"></script>
-<script type="text/javascript" src="js/pages/search-results.js"></script>
+<script type="text/javascript" src="js/pages/search-results.js?v=3"></script>
 <script type="text/javascript">
 const API_BASE_URL  = '<TMPL_VAR NAME="API_BASE_URL">';
 const USER_NAME     = '<TMPL_VAR NAME="USER_NAME">';
@@ -23,7 +23,10 @@ const USER_ID       = '<TMPL_VAR NAME="USER_ID">';
 
 <div id="msg" class="hidden medium center note" style="margin-top:2em;"></div>
 
-<div id="bottom-panel" class="hidden coge-mydata">
+<!-- The outer div is show/hidden by search-results.js with jQuery (inline
+     display:block), so the flex column layout lives on an inner wrapper. -->
+<div id="bottom-panel" class="hidden">
+  <div class="coge-mydata">
 	<div class="coge-mydata-left">
 	    <div id="toc_panel" class="small panel noselect hidden" style="overflow:auto;cursor:pointer;">
             <div class="bold text" style="font-size:16px; padding:0 10px 12px;">Search Results</div>
@@ -51,6 +54,7 @@ const USER_ID       = '<TMPL_VAR NAME="USER_ID">';
 			<span id="undelete_button" onClick="undelete_items();" class="undelete coge-icon coge-disabled glyphicon glyphicon-asterisk item-button invisible" style="margin-right:5px;" title="Undelete Selected Items"></span>
 			</TMPL_IF>
 			<span id="send_button" onClick="send_menu();" class="sendto coge-icon coge-disabled glyphicon glyphicon-arrow-right item-button invisible" style="margin-right:5px;" title="Send Selected Items to ..."></span>
+			<span id="load_more_button" onClick="load_more_results();" class="coge-chipbtn hidden" title="Fetch the next page of results for this category">Load more</span>
 			<input id="search_input" type="search" placeholder="Filter" size="25" style="float:right;margin-right:15px;vertical-align:top;" />
 			<span id="refresh_label" class="xsmall hidden info" style="float:right;padding-right:25px;">Refreshing...</span>
 		</div>
@@ -64,6 +68,7 @@ const USER_ID       = '<TMPL_VAR NAME="USER_ID">';
 		<div id="info_panel" class="small panel" style="overflow:none;">
 		</div>
 	</div>
+  </div> <!-- coge-mydata -->
 </div>
 
 <ul id="send_menu" class="coge-dropdown-menu hidden" style="position:absolute;width:90px;">
