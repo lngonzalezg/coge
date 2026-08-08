@@ -127,13 +127,14 @@
       <TMPL_INCLUDE NAME='CoGeBlast_ncbi.tmpl'>
     </div>
     <div style="padding: 0 1.4em 1em; box-sizing: border-box;">
-        <div class="bold text">Query Sequence(s)</div>
-        <textarea id="seq_box" name="seq_box" style='width:100%;color:gray;font-size:0.85em;' class="ui-corner-all ui-widget-content coge-section" spellcheck='false' wrap="off" cols="80" placeholder="<TMPL_VAR NAME="SEQUENCE">" rows="15"></textarea>
+        <div class="coge-eyebrow" style="letter-spacing:0.06em; text-transform:uppercase; color:#495057;">Query Sequence(s)</div>
+        <textarea id="seq_box" name="seq_box" style='width:100%;font-size:13px;background:#f8f9fa;' class="coge-code" spellcheck='false' wrap="off" cols="80" placeholder="<TMPL_VAR NAME="SEQUENCE">" rows="15"></textarea>
     </div>
   </div> <!-- tabs -->
 
-    <div class="padded" style='margin-top:0.75em;'>
+    <div class="coge-form-footer" style='margin-top:0.75em;'>
         <span id="run_blast" class='coge-button coge-button-lg'>Run CoGe BLAST</span>
+        <span class="coge-form-footer-context coge-genome-select-ctx">0 genomes selected</span>
     </div>
 
     <tmpl_include name="/widgets/Overlay.tmpl">
@@ -174,7 +175,7 @@
     </div>
 
     <script type="text/javascript" src="js/coge/utils.js"></script>
-    <script type="text/javascript" src="js/pages/blast.js"></script>
+    <script type="text/javascript" src="js/pages/blast.js?v=2"></script>
     <script type="text/javascript" src="./js/jquery.tablesorter.2.0.3.js"></script>
     <script>
     const PAGE_NAME     = '<TMPL_VAR NAME="PAGE_NAME">';

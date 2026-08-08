@@ -519,6 +519,173 @@ th.headerSortUp, th.headerSortDown { background-color: var(--coge-green-0); bord
 span.infobox { background-color: var(--coge-green-0); border-color: var(--coge-green-2); border-radius: var(--coge-radius-sm); padding: 3px 8px; }
 .backbox, .resultborder, .seqbackbox { background: var(--coge-gray-0); border: 1px solid var(--coge-gray-3); border-radius: var(--coge-radius); color: var(--coge-gray-9); }
 
+/* ===================== 8b. GENOME PICKER & SLOTS ========================= */
+/* Collect-mode picker (CoGeBlast, SynFind) and slot-mode picker (SynMap).
+ * The legacy <select> elements stay in the DOM as the data model; these
+ * classes style the row lists rendered from them. */
+
+.coge-picker { border: 1px solid var(--coge-gray-3); border-radius: var(--coge-radius); padding: 0; margin: 0; overflow: hidden; font-size: 14px; }
+.coge-picker-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--coge-gray-3);
+  background: var(--coge-gray-0);
+}
+.coge-picker-title { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--coge-gray-7); }
+.coge-picker-search { position: relative; flex: 1; max-width: 340px; min-width: 200px; }
+.coge-picker-search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--coge-gray-5); }
+.coge-picker-search input { width: 100%; padding-left: 32px !important; height: 32px !important; }
+.coge-picker-grid { display: grid; grid-template-columns: 1fr 1fr 1.2fr; }
+.coge-picker-col { border-right: 1px solid var(--coge-gray-3); min-width: 0; display: flex; flex-direction: column; }
+.coge-picker-col:last-child { border-right: 0; }
+.coge-picker-col-basket { background: var(--coge-gray-0); }
+.coge-picker-colhead { display: flex; align-items: baseline; gap: 7px; padding: 11px 14px; border-bottom: 1px solid var(--coge-gray-3); }
+.coge-picker-colhead .coge-picker-title { color: var(--coge-gray-7); }
+.coge-picker-count { font-family: var(--coge-font-mono); font-size: 11px; color: var(--coge-gray-6); }
+.coge-picker-col-basket .coge-picker-count { color: var(--coge-green-9); font-weight: 500; }
+.coge-picker-list { height: 230px; overflow: auto; }
+.coge-picker-colfoot { border-top: 1px solid var(--coge-gray-3); padding: 8px 14px; margin-top: auto; display: flex; gap: 8px; }
+
+.coge-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--coge-gray-7);
+  border-left: 3px solid transparent;
+}
+.coge-picker-row:hover { background: var(--coge-gray-0); }
+.coge-picker-row.selected { background: var(--coge-green-0); border-left-color: var(--coge-green-8); color: var(--coge-green-9); font-weight: 600; }
+.coge-picker-row.added { background: var(--coge-gray-0); color: var(--coge-gray-5); }
+.coge-picker-row .row-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.coge-picker-row.org .row-label { font-style: italic; }
+.coge-picker-row .row-chev { color: var(--coge-green-8); display: none; flex: none; }
+.coge-picker-row.selected .row-chev { display: inline-flex; }
+.coge-picker-addbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--coge-gray-4);
+  color: var(--coge-green-8);
+  background: #fff;
+  cursor: pointer;
+  flex: none;
+}
+.coge-picker-addbtn:hover { border-color: var(--coge-green-8); background: var(--coge-green-0); }
+.coge-picker-row.added .coge-picker-addbtn { border-color: var(--coge-gray-3); color: var(--coge-gray-4); cursor: default; }
+
+.coge-picker-group { padding: 0 0 12px; }
+.coge-picker-group:last-child { padding-bottom: 0; }
+.coge-picker-grouphead { font-size: 11px; font-weight: 600; font-style: italic; color: var(--coge-gray-6); padding: 0 14px 5px; }
+.coge-picker-basketrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 8px 4px;
+  padding: 7px 8px 7px 12px;
+  background: #fff;
+  border: 1px solid var(--coge-gray-3);
+  border-radius: var(--coge-radius);
+  font-size: 13px;
+}
+.coge-picker-basketrow .row-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.coge-picker-removebtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--coge-gray-5);
+  cursor: pointer;
+  flex: none;
+}
+.coge-picker-removebtn:hover { color: var(--coge-red-7); background: #fff5f5; }
+.coge-picker-empty { padding: 14px; font-size: 13px; color: var(--coge-gray-5); }
+
+.coge-chipbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--coge-radius);
+  border: 1px solid var(--coge-gray-4);
+  background: #fff;
+  color: var(--coge-gray-7);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.coge-chipbtn:hover { border-color: var(--coge-gray-5); background: var(--coge-gray-0); }
+.coge-chipbtn.ui-state-disabled, .coge-chipbtn.coge-disabled { color: var(--coge-gray-5); border-color: var(--coge-gray-3); background: #fff; }
+
+/* Slot-mode (SynMap): card per organism slot, legacy selects styled as lists */
+.coge-slot { border: 1px solid var(--coge-gray-3); border-radius: var(--coge-radius); overflow: hidden; background: #fff; }
+.coge-slot-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--coge-gray-3);
+  background: var(--coge-gray-0);
+}
+.coge-slot-swatch { width: 12px; height: 12px; border-radius: 4px; flex: none; background: var(--coge-gray-4); }
+.coge-slot[data-num="1"] .coge-slot-swatch { background: var(--coge-green-8); }
+.coge-slot[data-num="2"] .coge-slot-swatch { background: #4dabf7; }
+.coge-slot[data-num="3"] .coge-slot-swatch { background: #fa5252; }
+.coge-slot-header .coge-picker-title { flex: none; }
+.coge-slot-search { position: relative; flex: 1; }
+.coge-slot-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--coge-gray-5); }
+.coge-slot-search input { width: 100%; padding-left: 30px !important; height: 32px !important; box-sizing: border-box; }
+.coge-slot-body { padding: 12px 14px; }
+.coge-slot-body select[multiple] { width: 100%; box-sizing: border-box; border: 1px solid var(--coge-gray-3); }
+.coge-slot-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 14px; border-top: 1px solid var(--coge-gray-3); }
+.coge-slot-info { border-top: 1px solid var(--coge-gray-3); background: var(--coge-gray-0); padding: 12px 14px; font-size: 12px; }
+.coge-slot-info table { font-size: 12px; }
+
+/* Radio cards (CoGeBlast type/filter/color) — border tints when selected */
+.coge-radio-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 8px 10px;
+  border: 1px solid var(--coge-gray-3);
+  border-radius: var(--coge-radius);
+  font-size: 13px;
+  color: var(--coge-gray-9);
+}
+.coge-radio-card:has(input:checked) { border-color: var(--coge-green-8); background: var(--coge-green-0); }
+.coge-radio-card .grow { flex: 1; }
+.coge-radio-chip { padding: 7px 12px; }
+
+/* Form footer strip: submit action + context line */
+.coge-form-footer {
+  border: 1px solid var(--coge-gray-3);
+  border-radius: var(--coge-radius);
+  background: var(--coge-gray-0);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.coge-form-footer-context { font-size: 13px; color: var(--coge-gray-6); }
+
+/* Labeled parameter rows (mock's label/control pairs) */
+.coge-field-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.coge-field-row > label:first-child { width: 150px; flex: none; color: var(--coge-gray-7); }
+.coge-field-hint { font-size: 13px; color: var(--coge-gray-6); }
+.coge-eyebrow { font-size: 12px; font-weight: 600; color: var(--coge-gray-6); margin-bottom: 8px; }
+
 /* ============================ 9. HOME ==================================== */
 
 .coge-stats,

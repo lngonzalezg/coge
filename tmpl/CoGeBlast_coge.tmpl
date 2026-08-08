@@ -3,83 +3,71 @@
 <TMPL_INCLUDE NAME='widgets/GenomeSelect.tmpl'><!--<TMPL_VAR NAME=GENOME_SEARCH_STUFF>-->
 <br>
 
-<div class="bold text">BLAST Parameters</div>
-    <!--
-    <div class='small' style='color:gray;padding:5px;'>
-    <span id='blast_summary'><b>Type:</b> Nucleotide Sequence (blastn) ...</span>
-    <span onclick='$(this).parent().hide(); $("#blast_params").slideDown();' class='link small'>more</span>
-    </div>
-    -->
-<div id='coge-params' class="ui-widget-content ui-corner-all coge-section" style="box-sizing: border-box; width: 100%;">
-    <table>
-        <tr>
-        <td align="left" valign="top">
-            <div class="bold text">Type</div>
+<fieldset id='coge-params' class="coge-section" style="box-sizing: border-box; width: 100%;">
+    <legend>BLAST Parameters</legend>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:28px; margin-top:12px;">
+        <div style="display:flex; flex-direction:column; gap:18px;">
             <div id="coge_blast_type">
-            <table class="ui-widget-content ui-corner-all small">
-                <tr>
-                <td valign="top">
-                    <label><input id="coge_radio" type="radio" name="cogeblast" value="coge_blast_type_n" checked onClick="get_seq('coge_radio'); blast_param_on_select('coge_radio','coge');">Nucleotide Sequence</label>
-                    <select id="coge_blast_type_n" onChange="blast_param_on_select('coge_radio','coge')">
-                    <option value="blastn">blastn</option>
-                    <option value="tblastx">tblastx</option>
-                    <option value="lastz">(b)lastz</option>
-                    <option value="mega">megablast</option>
-                    <option value="dcmega">discontinuous megablast</option>
-                    </select>
-                </td>
-                </tr>
-                <tr>
-                <td>
-                    <label><input id="coge_radio" type="radio" name="cogeblast" value="coge_blast_type_p" onClick="get_seq('coge_radio'); blast_param_on_select('coge_radio','coge')">Protein Sequence</label>
-                    <select id="coge_blast_type_p" onChange="blast_param_on_select('coge_radio','coge')">
-                    <option value="tblastn">tblastn</option>
-                    </select>
-                </td>
-                </tr>
-            </table>
-            <br>
-            <div class="bold text">Color Blast Hits According to:</div>
-            <div class="ui-widget-content ui-corner-all small">&nbsp&nbsp
-                <input type="radio" name="color_by" id="color_by" value="0" checked>None<br>&nbsp&nbsp
-                <input type="radio" name="color_by" id="color_by" value="query">Query Sequence<br>&nbsp&nbsp
-                <input type="radio" name="color_by" id="color_by" value="quality">Log Quality<br>&nbsp&nbsp
-                <input type="radio" name="color_by" id="color_by" value="identity">Percent Identity<br>
-            </div>
+                <div class="coge-eyebrow">Type</div>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <label class="coge-radio-card">
+                        <input id="coge_radio" type="radio" name="cogeblast" value="coge_blast_type_n" checked onClick="get_seq('coge_radio'); blast_param_on_select('coge_radio','coge');">
+                        <span class="grow">Nucleotide Sequence</span>
+                        <select id="coge_blast_type_n" style="height:30px; width:170px; font-size:13px;" onChange="blast_param_on_select('coge_radio','coge')">
+                            <option value="blastn">blastn</option>
+                            <option value="tblastx">tblastx</option>
+                            <option value="lastz">(b)lastz</option>
+                            <option value="mega">megablast</option>
+                            <option value="dcmega">discontinuous megablast</option>
+                        </select>
+                    </label>
+                    <label class="coge-radio-card">
+                        <input id="coge_radio" type="radio" name="cogeblast" value="coge_blast_type_p" onClick="get_seq('coge_radio'); blast_param_on_select('coge_radio','coge')">
+                        <span class="grow">Protein Sequence</span>
+                        <select id="coge_blast_type_p" style="height:30px; width:170px; font-size:13px;" onChange="blast_param_on_select('coge_radio','coge')">
+                            <option value="tblastn">tblastn</option>
+                        </select>
+                    </label>
+                </div>
             </div> <!-- coge_blast_type -->
-        </td>
-        <td align="left" valign="top">
-            <div class="bold text">Parameters</div>
+            <div>
+                <div class="coge-eyebrow">Color Blast Hits According to:</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <label class="coge-radio-card coge-radio-chip"><input type="radio" name="color_by" id="color_by" value="0" checked>None</label>
+                    <label class="coge-radio-card coge-radio-chip"><input type="radio" name="color_by" id="color_by" value="query">Query Sequence</label>
+                    <label class="coge-radio-card coge-radio-chip"><input type="radio" name="color_by" id="color_by" value="quality">Log Quality</label>
+                    <label class="coge-radio-card coge-radio-chip"><input type="radio" name="color_by" id="color_by" value="identity">Percent Identity</label>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="coge-eyebrow">Parameters</div>
             <div id="blast_parameters">
-            <table class="ui-corner-all ui-widget-content small">
-                <tr>
-                <td>E-Value:</td>
-                <td>
-                    <select name="e_value" id="e_value">
-                    <option value="1e-30">1e-30</option>
-                    <option value="1e-20">1e-20</option>
-                    <option value="1e-10">1e-10</option>
-                    <option value="0.000001">1e-6</option>
-                    <option value="0.00001" selected>1e-5</option>
-                    <option value="0.0001">0.0001</option>
-                    <option value="0.001">0.001</option>
-                    <option value="0.01">0.01</option>
-                    <option value="0.1">0.1</option>
-                    <option value="1">1</option>
-                    <option value="10">10</option>
-                    <option value="100">100</option>
-                    </select>
-                </td>
-                </tr>
-                <tr>
-                <td>Word size:</td>
-                <td>
-                    <input type='text' id='word_size' value="7" size="7" />
-                </td>
-                </tr>
-                <tr>
-                <td>Gap Costs:</td>
-                <td>
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                    <div class="coge-field-row">
+                        <label>E-Value:</label>
+                        <select name="e_value" id="e_value" style="width:160px;">
+                            <option value="1e-30">1e-30</option>
+                            <option value="1e-20">1e-20</option>
+                            <option value="1e-10">1e-10</option>
+                            <option value="0.000001">1e-6</option>
+                            <option value="0.00001" selected>1e-5</option>
+                            <option value="0.0001">0.0001</option>
+                            <option value="0.001">0.001</option>
+                            <option value="0.01">0.01</option>
+                            <option value="0.1">0.1</option>
+                            <option value="1">1</option>
+                            <option value="10">10</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                    <div class="coge-field-row">
+                        <label>Word size:</label>
+                        <input type='text' id='word_size' value="7" size="7" class="coge-code" style="width:80px;" />
+                    </div>
+                    <div class="coge-field-row">
+                        <label>Gap Costs:</label>
+                        <span>
                     <select id="gapcosts_1-2" class="gapcosts" style="display: block">
                     <!-- <option value=" 0 0">Linear</option> -->
                     <option value="5 2" selected>Existence: 5 Extension: 2</option>
@@ -182,69 +170,56 @@
                     <option value="17 1">Existence: 17 Extension: 1</option>
                     <option value="16 1">Existence: 16 Extension: 1</option>
                     </select>
-                </td>
-                </tr>
-                <tr id="filter_query_row">
-                <td>Filter query sequence:</td>
-                <td>
-                    <label><input type="radio" name="filter_query" id="filter_query" value="1" checked />Yes</label>
-                    <label><input type="radio" name="filter_query" id="filter_query" value="0" />No</label>
-                </td>
-                </tr>
-                <tr>
-                <td>Limit results to:</td>
-                <td>
-                    <input type="text" id="resultslimit" value="<TMPL_VAR NAME=RESULTSLIMIT>" size="5" /> per organism</td>
-                </tr>
-            </table>
-            <div id='pro_or_nu_param'></div>
-        </div> <!-- blast_parameters -->
-        <div id='blastz_parameters'>
-            <table class="ui-corner-all ui-widget-content small">
-            <tr>
-                <td>Word size:</td>
-                <td>
-                <input type="text" name="blastz_wordsize" id="blastz_wordsize" tabindex="1" size="4" value="8" />
-                </td>
-            </tr>
-            <tr>
-                <td>Gap start penality:</td>
-                <td>
-                <input type="text" name="blastz_gap_start" id="blastz_gap_start" tabindex="1" size="4" value="400" />
-                </td>
-            </tr>
-            <tr>
-                <td>Gap extend penality:</td>
-                <td>
-                <input type="text" name="blastz_gap_extension" id="blastz_gap_extension" tabindex="1" size="4" value="30" />
-                </td>
-            </tr>
-            <tr>
-                <td>Chaining:</td>
-                <td>
-                <select id="blastz_chaining" tabindex="1" />
-                <option value='0'>no chaining</option>
-                <option value='1'>just output chain</option>
-                <option value='2'>chain and extend</option>
-                <option value='3'>just output HSPs</option>
-                </select>
-                </td>
-            </tr>
-            <tr>
-                <td>Score threshold:</td>
-                <td>
-                <input type="text" name="blastz_threshold" id="blastz_threshold" tabindex="1" size="4" value="3000" />
-                </td>
-            </tr>
-            <tr>
-                <td>Mask threshold:</td>
-                <td>
-                <input type="text" name="blastz_mask" id="blastz_mask" tabindex="1" size="4" value="0" />
-                </td>
-            </tr>
-            </table>
-        </div> <!-- blastz_parameters -->
-        </td>
-    </tr>
-    </table>
-</div> <!-- blast_params -->
+                        </span>
+                    </div>
+                    <div class="coge-field-row" id="filter_query_row">
+                        <label>Filter query sequence:</label>
+                        <span style="display:flex; gap:8px;">
+                            <label class="coge-radio-card coge-radio-chip"><input type="radio" name="filter_query" id="filter_query" value="1" checked />Yes</label>
+                            <label class="coge-radio-card coge-radio-chip"><input type="radio" name="filter_query" id="filter_query" value="0" />No</label>
+                        </span>
+                    </div>
+                    <div class="coge-field-row">
+                        <label>Limit results to:</label>
+                        <input type="text" id="resultslimit" value="<TMPL_VAR NAME=RESULTSLIMIT>" size="5" class="coge-code" style="width:80px;" />
+                        <span class="coge-field-hint">per organism</span>
+                    </div>
+                </div>
+                <div id='pro_or_nu_param' style="margin-top:12px;"></div>
+            </div> <!-- blast_parameters -->
+            <div id='blastz_parameters' style="margin-top:12px;">
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                    <div class="coge-field-row">
+                        <label>Word size:</label>
+                        <input type="text" name="blastz_wordsize" id="blastz_wordsize" tabindex="1" size="4" value="8" class="coge-code" style="width:80px;" />
+                    </div>
+                    <div class="coge-field-row">
+                        <label>Gap start penality:</label>
+                        <input type="text" name="blastz_gap_start" id="blastz_gap_start" tabindex="1" size="4" value="400" class="coge-code" style="width:80px;" />
+                    </div>
+                    <div class="coge-field-row">
+                        <label>Gap extend penality:</label>
+                        <input type="text" name="blastz_gap_extension" id="blastz_gap_extension" tabindex="1" size="4" value="30" class="coge-code" style="width:80px;" />
+                    </div>
+                    <div class="coge-field-row">
+                        <label>Chaining:</label>
+                        <select id="blastz_chaining" tabindex="1" style="width:200px;">
+                            <option value='0'>no chaining</option>
+                            <option value='1'>just output chain</option>
+                            <option value='2'>chain and extend</option>
+                            <option value='3'>just output HSPs</option>
+                        </select>
+                    </div>
+                    <div class="coge-field-row">
+                        <label>Score threshold:</label>
+                        <input type="text" name="blastz_threshold" id="blastz_threshold" tabindex="1" size="4" value="3000" class="coge-code" style="width:80px;" />
+                    </div>
+                    <div class="coge-field-row">
+                        <label>Mask threshold:</label>
+                        <input type="text" name="blastz_mask" id="blastz_mask" tabindex="1" size="4" value="0" class="coge-code" style="width:80px;" />
+                    </div>
+                </div>
+            </div> <!-- blastz_parameters -->
+        </div>
+    </div>
+</fieldset> <!-- blast_params -->

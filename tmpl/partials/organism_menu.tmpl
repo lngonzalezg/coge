@@ -1,57 +1,47 @@
 <tmpl_if name="org_menu">
-    <section class="ui-widget-content ui-corner-all coge-bg" style="float: left; padding: 0.3em; height: auto; width:625px;">
-            <div class="searchbar">
-                <div class="search-header">
-                    Organism <tmpl_var name="num">:
-                </div>
-
-                <div class="search-button">
-                    <span class="coge-button coge-button-sm" onClick="timing('org_name<tmpl_var name=num>');"><span class="glyphicon glyphicon-search"></span></span>
-                </div>
-
-                <div class="search-field">
-                    <input type="search"
-                        name = "org_name<tmpl_var name=num>"
-                        id="org_name<tmpl_var name=num>"
-                        onKeyUp="timing('org_name<tmpl_var name=num>');"
-                        placeholder="<tmpl_var name=SEARCH>" />
-                </div>
+    <!-- Slot-mode genome picker: one slot per required genome. The swatch hue
+         matches the axis color the results view uses for this organism.
+         All ids are the AJAX contract with SynMap.pl / synmap.js — do not rename. -->
+    <section class="coge-slot" data-num="<tmpl_var name=num>" id="org_menu<tmpl_var name=num>">
+        <div class="coge-slot-header">
+            <span class="coge-slot-swatch"></span>
+            <span class="coge-picker-title">Organism <tmpl_var name=num></span>
+            <div class="coge-slot-search">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" onclick="timing('org_name<tmpl_var name=num>');" style="cursor:pointer;"><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
+                <input type="search"
+                    name = "org_name<tmpl_var name=num>"
+                    id="org_name<tmpl_var name=num>"
+                    onKeyUp="timing('org_name<tmpl_var name=num>');"
+                    placeholder="<tmpl_var name=SEARCH>" />
             </div>
+        </div>
 
-            <div id="org_list<tmpl_var name=num>" class="coge-padded-top">
+        <div class="coge-slot-body">
+            <div id="org_list<tmpl_var name=num>">
                 <tmpl_var name="ORG_LIST">
             </div>
+        </div>
 
-            <table>
-                <tr>
-                    <td>
-                        <span id="dsg_menu<tmpl_var name=num>">
-                                <tmpl_var name="dsg_menu">
-                        </span>
-                    <!--</td>
-                    <td>-->
-                        <span id="feattype_menu<tmpl_var name=num>" class="left">
-                            <tmpl_if name="feattype_menu">
-                                <tmpl_var name="feattype_menu">
-                            <tmpl_else>
-                                <input type="hidden" id="feat_type<tmpl_var name=num>">
-                            </tmpl_if>
-                        </span>
-                    </td>
-                </tr>
-                <tr>
-                    <td colspan="3">
-                        <div id="genome_message<tmpl_var name=num>">
-                            <tmpl_var name="genome_message">
-                        </div>
-                    </td>
-                </tr>
-            </table>
-
-            <div style="vertical-align:top;" id="dsg_info<tmpl_var name=num>">
-                <tmpl_var name="dsg_info">
-                <div id="org_length<tmpl_var name=num>" class="hidden"><tmpl_var name="ORG_LENGTH"></div>
-                <div id="seq_type<tmpl_var name=num>" class="hidden"><tmpl_var name="SEQ_TYPE"></div>
+        <div class="coge-slot-row">
+            <span id="dsg_menu<tmpl_var name=num>">
+                    <tmpl_var name="dsg_menu">
+            </span>
+            <span id="feattype_menu<tmpl_var name=num>">
+                <tmpl_if name="feattype_menu">
+                    <tmpl_var name="feattype_menu">
+                <tmpl_else>
+                    <input type="hidden" id="feat_type<tmpl_var name=num>">
+                </tmpl_if>
+            </span>
+            <div id="genome_message<tmpl_var name=num>" class="coge-field-hint" style="flex-basis:100%;">
+                <tmpl_var name="genome_message">
             </div>
+        </div>
+
+        <div class="coge-slot-info" id="dsg_info<tmpl_var name=num>">
+            <tmpl_var name="dsg_info">
+            <div id="org_length<tmpl_var name=num>" class="hidden"><tmpl_var name="ORG_LENGTH"></div>
+            <div id="seq_type<tmpl_var name=num>" class="hidden"><tmpl_var name="SEQ_TYPE"></div>
+        </div>
     </section>
 </tmpl_if>

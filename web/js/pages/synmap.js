@@ -108,6 +108,12 @@ function handle_dsg_info(dsg_html, feat_menu, genome_message, length, org_num, o
         pageObj.org_name2 = org_name;
         pageObj.seq_type2 = seq_id;
     }
+
+    // Footer context: name the chosen pair beside the Generate button
+    if (pageObj.org_name1 && pageObj.org_name2)
+        $('#synmap_pair_ctx').text(pageObj.org_name1 + ' \u00D7 ' + pageObj.org_name2);
+    else
+        $('#synmap_pair_ctx').text('');
 }
 
 function set_dagchainer_defaults(params, type) {

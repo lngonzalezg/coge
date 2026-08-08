@@ -1,5 +1,17 @@
 <SCRIPT LANGUAGE="JavaScript">
 
+// Inline Tabler icon SVGs (the site CSP blocks icon CDNs).
+var GPK_SVG = {
+	search: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>',
+	plus: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg>',
+	x: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>',
+	chev: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg>',
+	info: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/></svg>',
+	trash: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg>',
+	download: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>',
+	save: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h10l4 4v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2"/><path d="M12 14m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M14 4l0 4l-6 0l0 -4"/></svg>'
+};
+
 $(document).ready(function(){
 
 	$("#org_name_desc").keyup(
@@ -13,16 +25,6 @@ $(document).ready(function(){
 			if ($('#org_id option:not(:disabled)').length) {
 				add_all_orgs();
 			}
-		}
-	);
-
-	$('#remove').click(
-		function() {
-			$('#genome_choice option:selected').each(function(){
-				$('#'+$(this).val()).remove();
-			});
-			count_genomes();
-			update_buttons();
 		}
 	);
 
@@ -45,13 +47,9 @@ $(document).ready(function(){
 		}
 	);
 
-	$('#org_id').
-		click( function() { seq_type_search(); } ).
-		change( function() { seq_type_search(); } );
-
-	$('#dsgid').click( function() { update_buttons(); } );
-	$('#db_select').click( function() { update_buttons(1); } );
-
+	// Initial render from any server-provided organism list
+	render_orgs();
+	render_basket();
 });
 
 function org_search(desc_search){
@@ -81,6 +79,7 @@ function org_search(desc_search){
 						seq_type_search();
 						update_buttons();
 						count_organisms();
+						render_orgs();
 					}
 				}
 			});
@@ -90,26 +89,11 @@ function org_search(desc_search){
 }
 
 function update_buttons(remove) {
-	if (remove && $('#genome_choice').val()) {
-		$('#remove').removeClass('ui-state-disabled');
-		$('#add').addClass('ui-state-disabled');
-		return;
-	}
-	else {
-		$('#remove').addClass('ui-state-disabled');
-		$('#add').removeClass('ui-state-disabled');
-	}
-
 	if ($('#org_id').val() && $('#dsgid').val()) {
 		$('#genome_info_button').removeClass('ui-state-disabled');
-		$('#org_seq_types').show();
-		$('#add').removeClass('ui-state-disabled');
-		$('#add').removeClass('ui-state-disabled');
 	}
 	else {
 		$('#genome_info_button').addClass('ui-state-disabled');
-		$('#add').addClass('ui-state-disabled');
-		$('#org_seq_types').hide();
 	}
 }
 
@@ -141,15 +125,16 @@ function seq_type_search() {
 			success : function(html) {
 				$('#dsgid').html(html);
 				var count = $('#dsgid option').length;
-				$('#dsgid').attr('size', Math.min(count, 3));
-				$('#genome_count').html('('+count+')');
+				$('#genome_count').html(count);
 				update_buttons();
+				render_genomes();
 			}
 		});
 	}
 	else {
 		$('#dsgid').html('');
 		update_buttons();
+		render_genomes();
 	}
 }
 
@@ -194,7 +179,7 @@ function add_to_list(stuff) {
 		if (!id && !org) { continue; }
 		var check = $('#'+id).val();
 		if (check){ continue; }
-		var html = '<option id='+id+' value='+id+' ondblclick="remove_selected_orgs();">'+org+'</option>';
+		var html = '<option id='+id+' value='+id+'>'+org+'</option>';
 		$('#blank').remove();
 		$('#genome_choice').append(html);
 	}
@@ -203,6 +188,7 @@ function add_to_list(stuff) {
 
 function sort_genome_choice() {
 	$('#genome_choice').append().sortSelect();
+	render_basket();
 }
 
 function count_organisms() {
@@ -213,7 +199,10 @@ function count_organisms() {
 	else {
 		$('#add_all_listed_button').addClass('ui-state-disabled');
 	}
-	$('#org_count').html('('+count+')');
+	$('#org_count').html(count);
+	// Render here, not only in org_search: pages (blast.js) ship their own
+	// org_search, and a stale-cached copy would otherwise skip the row list.
+	render_orgs();
 }
 
 function count_genomes() {
@@ -227,12 +216,115 @@ function count_genomes() {
 		$('#genome_choice').html('<option id="blank" value=null style="color:gray;" disabled="disabled">None</option>');
 	}
 
-	$('#selected_genome_count').html('('+count+')');
+	$('#selected_genome_count').html(count);
+	$('.coge-genome-select-ctx').text(count == 1 ? '1 genome selected' : count + ' genomes selected');
+	render_basket();
+	render_genomes();
 }
 
 function clear_org_list() {
 	$('#genome_choice').empty();
 	count_genomes();
+}
+
+/* ---- Render layer: mirrors the hidden selects as modern row lists ---- */
+
+function render_orgs() {
+	var list = $('#gpk_org_rows');
+	if (!list.length) return;
+	list.empty();
+	var opts = $('#org_id option');
+	if (!opts.length) {
+		list.append($('<div class="coge-picker-empty"></div>').text('Search for organisms above (3 letters or more).'));
+		return;
+	}
+	opts.each(function() {
+		var opt = this;
+		var row = $('<div class="coge-picker-row org"></div>').toggleClass('selected', opt.selected);
+		$('<span class="row-label"></span>').text(opt.text).appendTo(row);
+		$('<span class="row-chev">' + GPK_SVG.chev + '</span>').appendTo(row);
+		row.on('click', function() {
+			$('#org_id option').prop('selected', false);
+			opt.selected = true;
+			seq_type_search();
+			update_buttons();
+			render_orgs();
+		});
+		list.append(row);
+	});
+}
+
+function render_genomes() {
+	var list = $('#gpk_genome_rows');
+	if (!list.length) return;
+	list.empty();
+	var opts = $('#dsgid option');
+	if (!opts.length) {
+		list.append($('<div class="coge-picker-empty"></div>').text('Pick an organism to list its genomes.'));
+		return;
+	}
+	opts.each(function() {
+		var opt = this;
+		var added = $('#genome_choice option').filter(function() { return this.id == opt.value; }).length > 0;
+		var row = $('<div class="coge-picker-row"></div>')
+			.toggleClass('selected', opt.selected && !added)
+			.toggleClass('added', added);
+		$('<span class="row-label"></span>').html(opt.text).appendTo(row);
+		var btn = $('<span class="coge-picker-addbtn" title="Add to selection">' + GPK_SVG.plus + '</span>').appendTo(row);
+		btn.on('click', function(e) {
+			e.stopPropagation();
+			if (!added) get_dsg_for_menu({dsgid: opt.value});
+		});
+		row.on('click', function() {
+			$('#dsgid option').prop('selected', false);
+			opt.selected = true;
+			update_buttons();
+			render_genomes();
+		});
+		list.append(row);
+	});
+}
+
+function render_basket() {
+	var list = $('#gpk_basket');
+	if (!list.length) return;
+	list.empty();
+	var opts = $('#genome_choice option').not('#blank');
+	if (!opts.length) {
+		list.append($('<div class="coge-picker-empty"></div>').text('None'));
+		return;
+	}
+	// Group by organism: basket text is "<organism> (id <n> <source> <type> v<x>)"
+	var groups = [], byName = {};
+	opts.each(function() {
+		var opt = this;
+		var text = $(opt).text();
+		var idx = text.indexOf(' (id ');
+		var org = idx > 0 ? text.substring(0, idx) : '';
+		var rest = idx > 0 ? text.substring(idx + 2).replace(/\)\s*$/, '') : text;  // "id ..." detail
+		if (!byName[org]) {
+			byName[org] = { name: org, items: [] };
+			groups.push(byName[org]);
+		}
+		byName[org].items.push({ id: opt.id, detail: rest });
+	});
+	groups.forEach(function(g) {
+		var group = $('<div class="coge-picker-group"></div>');
+		if (g.name)
+			$('<div class="coge-picker-grouphead"></div>').text(g.name).appendTo(group);
+		g.items.forEach(function(item) {
+			var row = $('<div class="coge-picker-basketrow"></div>');
+			$('<span class="row-label"></span>').text(g.name ? item.detail : item.detail).attr('title', (g.name ? g.name + ' ' : '') + item.detail).appendTo(row);
+			$('<span class="coge-picker-removebtn" title="Remove">' + GPK_SVG.x + '</span>')
+				.on('click', function() {
+					$('#genome_choice option').filter(function() { return this.id == item.id; }).remove();
+					count_genomes();
+				})
+				.appendTo(row);
+			group.append(row);
+		});
+		list.append(group);
+	});
 }
 
 function save_org_list() {
@@ -341,87 +433,86 @@ function import_lists() {
 
 </SCRIPT>
 
-<!--MAIN STUFF-->
-<div class="bold text">Select Target Genomes</div>
-<table class="ui-widget-content ui-corner-all coge-section" style="width: 100%; box-sizing: border-box;">
-  <tr class="top">
-    <td align='left'>
-      <table>
-        <tr>
-          <td>
-            <table class="small">
-              <tr>
-                <td>Organism:</td>
-                <td>
-                  <input id="org_name_desc" name="org_name_desc" type="search" placeholder="Search" size="27" />
-                  <img id="wait_indicator" src="picts/ajax-loader.gif" style="opacity:0;" />
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-        <tr class="top">
-          <td>
-            <table>
-              <tr class="top">
-                <td>
-                  <div id="org_list">
-                    <span class="small info">Matching Organisms <span id="org_count"></span></span><br>
-                    <select MULTIPLE id="org_id" SIZE="8" style="width: 100%; box-sizing: border-box;" ondblclick="add_selected_orgs();">
-                      <TMPL_VAR NAME="ORG_LIST">
-                    </select>
-                  </div>
-                  <div id="org_seq_types" style='display:none;'>
-                  <span class="small info">Genomes for Organism <span id="genome_count"></span></span><br>
-                  	<select multiple style="width: 100%; box-sizing: border-box;" id='dsgid' ondblclick="get_dsg_for_menu({dsgid: $('#dsgid').val()});">
-                  	</select>
-                  </div>
-                    <div class="padded">
-                        <span id="genome_info_button" href="javascript:void(0)" class='ui-state-disabled ui-button ui-corner-all coge-button-sm'>
-                            <span class="ui-icon ui-icon-info"></span>Genome Info
-                        </span>
-                        <span id="add_all_listed_button" href="javascript:void(0)" class='ui-state-disabled ui-button ui-corner-all coge-button-sm'>
-                            <span class="ui-icon ui-icon-plusthick"></span>Add all
-                        </span>
-                        <span id="add" href="javascript:void(0)" onClick="add_selected_orgs();" class='ui-state-disabled ui-button ui-corner-all coge-button-sm'>
-                            <span class="ui-icon ui-icon-plus"></span>Add
-                        </span>
-                    </div>
-                </td>
-                <td>
-                  <span class="small info">Selected Genomes
-                    <span id='selected_genome_count' class='small'></span>
-                  </span><br>
-                  <div id='db_select'>
-                    <select MULTIPLE id="genome_choice" size="8" style="min-width:200px; width: 100%; box-sizing:border-box;">
-                      <option id='blank' value=null style='color:gray;' disabled='disabled'>None</option>
-                    </select>
-                  </div>
-                  <div class="padded">
-                    <span id="remove" href="javascript:void(0)" onClick="remove_selected_orgs();" class='ui-state-disabled ui-button ui-corner-all coge-button-sm'>
-                        <span class="ui-icon ui-icon-minus"></span>Remove
-                    </span>
-                    <span id="clear" name="clear" onClick="clear_org_list();" class='ui-state-disabled ui-button ui-corner-all coge-button-sm'>
-                        <span class="ui-icon ui-icon-minusthick"></span>Remove all
-                    </span>
-                    <span id="save" name="save" class='ui-button ui-corner-all coge-button-sm' onclick="save_org_list();">
-                        <span class="ui-icon ui-icon-disk"></span>Save
-                    </span>
-                    <span id="import" name="import" onClick="search_lists();" class='ui-button ui-button-cornerall coge-button-sm'>
-                        <span class="ui-icon ui-icon-arrowreturnthick-1-w"></span>Import Notebook
-                    </span>
-                    <TMPL_IF NAME="SAVE_ORG_LIST">
-                    </TMPL_IF>
-                  </div>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-</table>
+<!-- Collect-mode genome picker: search → organism → genome → basket.
+     The hidden selects below remain the data model the page JS reads. -->
+<fieldset class="coge-picker" id="genome_select">
+	<div class="coge-picker-header">
+		<span class="coge-picker-title">Select Target Genomes</span>
+		<div class="coge-picker-search">
+			<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
+			<input id="org_name_desc" name="org_name_desc" type="search" placeholder="Search organisms &amp; genomes" />
+		</div>
+		<img id="wait_indicator" src="picts/ajax-loader.gif" style="opacity:0;" />
+		<div style="flex:1;"></div>
+		<span id="import" name="import" onClick="search_lists();" class="coge-chipbtn">
+			<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
+			Import Notebook
+		</span>
+		<span id="save" name="save" class="coge-chipbtn" onclick="save_org_list();">
+			<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h10l4 4v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2"/><path d="M12 14m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M14 4l0 4l-6 0l0 -4"/></svg>
+			Save
+		</span>
+		<TMPL_IF NAME="SAVE_ORG_LIST">
+		</TMPL_IF>
+	</div>
+
+	<div class="coge-picker-grid">
+		<div class="coge-picker-col">
+			<div class="coge-picker-colhead">
+				<span class="coge-picker-title">Matching Organisms</span>
+				<span id="org_count" class="coge-picker-count"></span>
+			</div>
+			<div id="gpk_org_rows" class="coge-picker-list"></div>
+			<div class="coge-picker-colfoot">
+				<span id="add_all_listed_button" href="javascript:void(0)" class="coge-chipbtn ui-state-disabled">
+					<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg>
+					Add all
+				</span>
+			</div>
+		</div>
+
+		<div class="coge-picker-col">
+			<div class="coge-picker-colhead">
+				<span class="coge-picker-title">Genomes for Organism</span>
+				<span id="genome_count" class="coge-picker-count"></span>
+			</div>
+			<div id="gpk_genome_rows" class="coge-picker-list"></div>
+			<div class="coge-picker-colfoot">
+				<span id="genome_info_button" href="javascript:void(0)" class="coge-chipbtn ui-state-disabled">
+					<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/></svg>
+					Genome Info
+				</span>
+			</div>
+		</div>
+
+		<div class="coge-picker-col coge-picker-col-basket">
+			<div class="coge-picker-colhead">
+				<span class="coge-picker-title">Selected Genomes</span>
+				<span id="selected_genome_count" class="coge-picker-count"></span>
+			</div>
+			<div id="gpk_basket" class="coge-picker-list"></div>
+			<div class="coge-picker-colfoot">
+				<span id="clear" name="clear" onClick="clear_org_list();" class="coge-chipbtn ui-state-disabled">
+					<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg>
+					Remove all
+				</span>
+			</div>
+		</div>
+	</div>
+
+	<!-- Legacy data model: the page JS reads these; the rows above mirror them. -->
+	<div class="hidden">
+		<select MULTIPLE id="org_id" SIZE="8">
+			<TMPL_VAR NAME="ORG_LIST">
+		</select>
+		<div id="org_seq_types">
+			<select multiple id='dsgid'></select>
+		</div>
+		<select MULTIPLE id="genome_choice" size="8">
+			<option id='blank' value=null style='color:gray;' disabled='disabled'>None</option>
+		</select>
+	</div>
+</fieldset>
 
   <div id="import_list_box" class="hidden dialog_box" title="Import Notebook">
     <table class="small">

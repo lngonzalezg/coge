@@ -67,14 +67,10 @@
 
     <div id="tab-1">
         <div class="alert"><tmpl_var name=error></div>
-        <ul>
-            <li style="display:inline-block; padding: 5px 0 5px 0; vertical-align:top;">
-                    <tmpl_var name=org_menu1>
-            </li>
-            <li style="display:inline-block; padding: 5px 0 5px 0; vertical-align:top;">
-                    <tmpl_var name=org_menu2>
-            </li>
-        </ul>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:5px 0; align-items:start;">
+            <tmpl_var name=org_menu1>
+            <tmpl_var name=org_menu2>
+        </div>
     </div>
     <!--close tab-1 -->
 
@@ -418,8 +414,9 @@
         </form>
     </div> <!-- close tab-3 -->
 </section> <!--close tabs section-->
-<div style="padding: 15px 0 5px 0;">
+<div class="coge-form-footer" style="margin: 15px 0 5px 0;">
     <span class="coge-button coge-button-lg" id="synmap_go" >Generate SynMap</span>
+    <span id="synmap_pair_ctx" class="coge-form-footer-context"></span>
 </div>
 </tmpl_if>
 
@@ -473,7 +470,7 @@
 <TMPL_INCLUDE NAME="widgets/Progress.tmpl">
 
 <!-- Load scripts last for speed -->
-<script src="js/pages/synmap.js"></script>
+<script src="js/pages/synmap.js?v=2"></script>
 <script src="js/coge/services.js"></script>
 <script src="js/coge/progress.js"></script>
 <script src="js/coge/utils.js"></script>

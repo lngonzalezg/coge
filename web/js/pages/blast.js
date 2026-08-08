@@ -1336,6 +1336,7 @@ function org_search(desc_search){
                         seq_type_search();
                         update_buttons();
                         count_organisms();
+                        if (typeof render_orgs === 'function') render_orgs();
                     }
                 }
             });
