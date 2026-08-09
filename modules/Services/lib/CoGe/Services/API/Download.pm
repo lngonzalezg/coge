@@ -76,7 +76,21 @@ sub get {
             print STDERR "CoGe::Services::Download ERROR: not logged in\n";
             return $self->render(API_STATUS_UNAUTHORIZED);
         }
+        # Default to the authenticated user. download_url_for has never emitted a "user"
+        # param (its username lines are commented out, and would have spelled it
+        # "username" anyway), so every workflow result URL ever written into .results
+        # arrives without one. That left $user_name undef, and because
+        # get_download_path/get_workflow_log_file build the path with catfile, the undef
+        # collapsed to nothing instead of erroring: the lookup went to
+        # .../downloads/jobs/<wid>/<file> with the username level missing entirely, and
+        # 404'd. Non-admins never got that far -- undef ne their name tripped the check
+        # below and returned 401.
+        #
+        # Defaulting here rather than adding the param to new URLs also repairs every
+        # already-stored result link, and keeps usernames out of URLs. An admin fetching
+        # another user's result can still pass user= explicitly.
         my $user_name = $self->param('user');
+        $user_name = $user->name unless defined $user_name && length $user_name;
         if ($user_name ne $user->name && !$user->is_admin) {
             warn 'CoGe::Services::Download ERROR: different user';
             return $self->render(API_STATUS_UNAUTHORIZED);
