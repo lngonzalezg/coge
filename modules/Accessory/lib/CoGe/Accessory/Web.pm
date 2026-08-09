@@ -73,7 +73,7 @@ BEGIN {
     $TEMPDIR = catdir($BASEDIR, 'web', 'tmp'); #FIXME move out of web
     @ISA     = ( qw (Exporter Class::Accessor) );
     @EXPORT  = qw( generate_session_id gunzip gzip
-                   send_email get_defaults set_defaults internal_url_for url_for internal_api_url_for api_url_for get_job 
+                   send_email get_defaults set_defaults internal_url_for url_for url_path_for internal_api_url_for api_url_for get_job 
                    schedule_job render_template ftp_get_path ftp_get_file split_url url_is_public_fetch_safe
                    parse_proxy_response jwt_decode_token add_user write_log log_history
                    download_url_for get_command_path get_tiny_link
@@ -1470,7 +1470,9 @@ sub download_url_for { # mdb added 3/8/16 for hypnotoad
         $params .= "&filename=$filename";
     }
     
-    return url_for(api_url_for("downloads/?$params"));
+    # Root-relative: this URL is written into .results by a JEX task with no request
+    # context, then rendered in the browser -- see url_path_for.
+    return url_path_for(api_url_for("downloads/?$params"));
 }
 
 sub api_url_for {
@@ -1493,6 +1495,31 @@ sub internal_api_url_for {
     return catdir($API_URL, $path);
 }
 
+
+# Root-relative counterpart to url_for: same path/query assembly, but no scheme and
+# no host, so the result is correct from whatever origin the browser is on. Use this
+# for anything the browser will follow; keep url_for for URLs that LEAVE the app
+# (tiny/shareable links, file exports), which need a host to mean anything.
+#
+# This is deliberately usable from JEX tasks and other non-request contexts: they have
+# no Host header to derive an origin from, and a URL persisted with one host baked in
+# goes stale the moment the instance is published somewhere else.
+sub url_path_for {
+    my ($path, %params) = @_;
+
+    croak "CONFIG was not found." unless $CONF;
+
+    my $BASE_URL = $CONF->{URL} // '/';
+    $BASE_URL =~ s{/*$}{/};     # exactly one trailing slash
+    $path =~ s{^/+}{};          # ...and no leading slash on the path
+
+    my $query_string = '';
+    if (%params) {
+        $query_string = '?' . join('&', map { $_ . '=' . $params{$_} } sort keys %params);
+    }
+
+    return $BASE_URL . $path . $query_string;
+}
 
 sub url_for {
     my ($path, %params) = @_;
@@ -1521,13 +1548,17 @@ sub url_for {
     $BASE_URL =~ s/^\///;
     $BASE_URL =~ s/\/$//;
 
-    # Strip BASE URL from SERVER
-    $SERVER =~ s/$BASE_URL//i;
-
-    # Strip scheme and /
-    $SERVER =~ s/\/*$//;
-    $SERVER =~ s/^https?:\/{2}//;
-    $SERVER =~ s/\/$//;
+    # Strip the scheme, then remove BASE_URL from the END of SERVER's path.
+    #
+    # This was an unanchored s/$BASE_URL//i, which happily matched inside the HOSTNAME:
+    # with BASE_URL="coge" and SERVER="https://coge.gastonlyons.com/coge/" it deleted the
+    # "coge" in the host and left ".gastonlyons.com/coge", which then got "coge" joined
+    # back on -- "https://.gastonlyons.com/coge/coge/SynMap.pl". It only ever worked
+    # because every earlier SERVER happened to have the mount path occur before any
+    # match in the host. Anchor it to the end of the path so the host is untouchable.
+    $SERVER =~ s{^https?://}{}i;
+    $SERVER =~ s{/+$}{};
+    $SERVER =~ s{/\Q$BASE_URL\E$}{}i if length $BASE_URL;
 
     # Build up parts and ignore BASE_URL if not set
     my @parts = (length $BASE_URL) ? ($SERVER, $BASE_URL, $path)
@@ -1572,13 +1603,17 @@ sub internal_url_for {
     $BASE_URL =~ s/^\///;
     $BASE_URL =~ s/\/$//;
 
-    # Strip BASE URL from SERVER
-    $SERVER =~ s/$BASE_URL//i;
-
-    # Strip scheme and /
-    $SERVER =~ s/\/*$//;
-    $SERVER =~ s/^https?:\/{2}//;
-    $SERVER =~ s/\/$//;
+    # Strip the scheme, then remove BASE_URL from the END of SERVER's path.
+    #
+    # This was an unanchored s/$BASE_URL//i, which happily matched inside the HOSTNAME:
+    # with BASE_URL="coge" and SERVER="https://coge.gastonlyons.com/coge/" it deleted the
+    # "coge" in the host and left ".gastonlyons.com/coge", which then got "coge" joined
+    # back on -- "https://.gastonlyons.com/coge/coge/SynMap.pl". It only ever worked
+    # because every earlier SERVER happened to have the mount path occur before any
+    # match in the host. Anchor it to the end of the path so the host is untouchable.
+    $SERVER =~ s{^https?://}{}i;
+    $SERVER =~ s{/+$}{};
+    $SERVER =~ s{/\Q$BASE_URL\E$}{}i if length $BASE_URL;
 
     # Build up parts and ignore BASE_URL if not set
     my @parts = (length $BASE_URL) ? ($SERVER, $BASE_URL, $path)

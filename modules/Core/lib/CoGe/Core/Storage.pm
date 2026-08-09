@@ -659,7 +659,10 @@ sub get_workflow_results {
             push @all_results, {
                 type => 'http',
                 name => $name,
-                path => CoGe::Accessory::Web::url_for('api/v1/jobs/'.$workflow_id.'/results/'.$name,
+                # Root-relative, like the paths add_workflow_result writes: these are
+                # rendered in the browser, and this reader runs both in the API and in
+                # JEX scripts, so there is no request origin to build a host from.
+                path => CoGe::Accessory::Web::url_path_for('api/v1/jobs/'.$workflow_id.'/results/'.$name,
                     username => $user_name
                 ) # FIXME move api path into conf file ...?
             };
