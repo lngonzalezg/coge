@@ -70,7 +70,12 @@ sub gen_body {
                       EMBED => $EMBED ? 1 : 0,
 	                  HEIGHT => ($EMBED ? '99%' : '80%'),
 	                  WIDTH => ($EMBED ? '99%' : '100%'),
-	                  API_BASE_URL => 'api/v1/jbrowse', # mdb added base URL, 2/3/15 COGE-289
+	                  # Root-relative, not page-relative: widgets/JBrowse.tmpl hardcodes
+	                  # JBrowse's config baseUrl to '/', and JBrowse resolves its
+	                  # "include" entries (the track config URL) against that rather than
+	                  # against the document -- so a page-relative value here loses the
+	                  # /coge mount and 404s, taking every track with it.
+	                  API_BASE_URL => $CONF->{URL} . 'api/v1/jbrowse', # mdb added base URL, 2/3/15 COGE-289
 	                  USER_NAME => $USER->user_name
 	);
 

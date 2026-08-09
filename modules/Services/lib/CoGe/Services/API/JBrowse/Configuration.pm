@@ -99,8 +99,15 @@ sub track_config {
 	    }
 	}
 
-    my $SERVER_NAME = $conf->{SERVER};
-    my $JBROWSE_API = $SERVER_NAME . 'api/v1/jbrowse'; #TODO move to config file
+    # Root-relative, NOT built from SERVER. Every baseUrl below is fetched by JBrowse
+    # over XHR, and the CSP allows connect-src 'self' only -- so an absolute URL naming
+    # one host is blocked outright whenever the browser is on a different one. With
+    # SERVER free to be any published origin, that would break the genome browser on
+    # every other origin. A leading "/" also sidesteps the question of what JBrowse
+    # resolves its concatenated store URLs against. URL is the mount path ("/coge/").
+    my $BASE_URL = $conf->{URL} // '/';
+    $BASE_URL =~ s{/*$}{/};
+    my $JBROWSE_API = $BASE_URL . 'api/v1/jbrowse'; #TODO move to config file
 
     # Get genome
     my $genome = $db->resultset('Genome')->find($gid);
@@ -171,7 +178,7 @@ sub track_config {
             type         => "CoGe/View/Track/CoGeFeatures",
             description  => "note, description",
             storeClass   => "JBrowse/Store/SeqFeature/REST",
-            onClick      => $SERVER_NAME . 'FeatAnno.pl?dsg=' . $gid . ';chr={chr};start={start};stop={end}',
+            onClick      => $BASE_URL . 'FeatAnno.pl?dsg=' . $gid . ';chr={chr};start={start};stop={end}',
             maxFeatureScreenDensity => 20,
             maxHeight               => 100000,
             minSubfeatureWidth      => 4,
@@ -204,7 +211,7 @@ sub track_config {
                 type         => "JBrowse/View/Track/HTMLFeatures",
                 storeClass   => "JBrowse/Store/SeqFeature/REST",
                 region_stats => 1, # see HTMLFeatures.js, force calls to stats/region instead of stats/global
-                onClick      => $SERVER_NAME . 'FeatAnno.pl?dsg=' . $gid . ';chr={chr};start={start};stop={end};type=' . $type_name,
+                onClick      => $BASE_URL . 'FeatAnno.pl?dsg=' . $gid . ';chr={chr};start={start};stop={end};type=' . $type_name,
                 maxFeatureScreenDensity => 1000,     #50,
                 maxHeight               => 100000,
                 style                   => {
@@ -249,7 +256,7 @@ sub track_config {
                     type         => "CoGe/View/Track/CoGeFeatures",
                     description  => "note, description",
                     storeClass   => "JBrowse/Store/SeqFeature/REST",
-                    onClick      => $SERVER_NAME . 'FeatAnno.pl?ds=' . $dsid . ';chr={chr};start={start};stop={end}',
+                    onClick      => $BASE_URL . 'FeatAnno.pl?ds=' . $dsid . ';chr={chr};start={start};stop={end}',
                     maxFeatureScreenDensity => 20,
                     maxHeight               => 100000,
                     minSubfeatureWidth      => 4,
@@ -280,7 +287,7 @@ sub track_config {
                         type         => "JBrowse/View/Track/HTMLFeatures",
                         storeClass   => "JBrowse/Store/SeqFeature/REST",
                         region_stats => 1, # see HTMLFeatures.js, force calls to stats/region instead of stats/global
-                        onClick      => $SERVER_NAME . 'FeatAnno.pl?ds=' . $dsid . ';chr={chr};start={start};stop={end};type=' . $type_name,
+                        onClick      => $BASE_URL . 'FeatAnno.pl?ds=' . $dsid . ';chr={chr};start={start};stop={end};type=' . $type_name,
                         maxFeatureScreenDensity => 1000,     #50,
                         maxHeight               => 100000,
                         style                   => {
