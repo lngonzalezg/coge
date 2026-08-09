@@ -115,7 +115,14 @@ sub track_config {
 
     # Check permissions
     if ($genome->restricted and (not defined $user or not $user->has_access_to_genome($genome))) {
-      	$self->render({error => "JBrowse::Configuration::track_config access denied to genome $gid"});
+        # render() takes a key/value list (or an args hashref), so the old
+        # render({error => ...}) set an "error" arg that nothing knows how to
+        # render: the request died as "Could not render a response" with a 500
+        # and a Mojolicious.pm line number, instead of reporting the permission
+        # failure. Match JBrowse::Search's json+401 form, and keep the internal
+        # class/method detail in the log rather than the response body.
+        print STDERR "JBrowse::Configuration::track_config access denied to genome $gid\n";
+        $self->render(json => { error => 'User does not have permission to view this genome' }, status => 401);
        	return;
     }
 
