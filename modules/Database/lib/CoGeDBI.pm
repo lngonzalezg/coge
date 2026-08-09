@@ -571,12 +571,7 @@ sub get_features_by_range { # for JBrowse::Annotation
 
     # Try to get the results from the cache
     my $results = $cache->get($cache_key);
-    print STDERR "Cache keys\n";
-    my @keys = $cache->get_keys();
-    print STDERR "$_\n" for @keys;
-    print STDERR "End Cache Keys\n";
     unless ($results) {
-	print STDERR "Miss!" . $cache_key  . "\n";
         # mdb 4/24/14 - added fn.primary_name=1 constraint to keep from returning arbitrary name
         my $query = qq{
             SELECT l.start as locstart, l.stop as locstop, l.strand as locstrand, 
@@ -600,18 +595,21 @@ sub get_features_by_range { # for JBrowse::Annotation
         $cache->set($cache_key, $results);
     }
 
-    # Filter results in Perl
+    # Filter results in Perl.
+    #
+    # Filter on the location coordinates (locstart/locstop), not the feature coordinates.
+    # A feature's start/stop is the envelope over all of its locations, and some of those
+    # envelopes are pathological: genome 25868 chr1 has a single repeat_region spanning
+    # 498kb-32.1Mb with ~263k separate location rows under it. Testing the envelope let
+    # every one of those locations through for any window, so a 1kb request came back with
+    # 263k features / 26MB of JSON. Callers render one entry per location, so per-location
+    # overlap is the correct test.
     my @filtered_results = grep {
-        $_->{stop} > $start && $_->{start} <= $stop &&
-	$_->{feature_type_id} ne 4 &&
+        $_->{locstop} > $start && $_->{locstart} <= $stop &&
+        $_->{feature_type_id} != 4 &&
         (!defined $feat_type || $_->{type} eq $feat_type) &&
         (!defined $dsid || $_->{dataset_id} == $dsid)
-    } @$results; 
-
-    print STDERR "Cache keys\n";
-    my @keys2 = $cache->get_keys();
-    print STDERR "$_\n" for @keys2;
-    print STDERR "End Cache Keys\n";
+    } @$results;
 
     return \@filtered_results;
 }
