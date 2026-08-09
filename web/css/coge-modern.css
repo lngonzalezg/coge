@@ -998,7 +998,7 @@ span.infobox { background-color: var(--coge-green-0); border-color: var(--coge-g
 
 .coge-home-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 24px;
 }
 @media (max-width: 1000px) { .coge-home-row { grid-template-columns: 1fr; } }
