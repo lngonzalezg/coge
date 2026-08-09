@@ -607,17 +607,22 @@ function launch(experiment) {
 
         return url
     }
+    // Mint a short link through CoGe's own API. This used to call a hardcoded
+    // genomevolution.org YOURLS endpoint with its signature embedded in the page --
+    // cross-origin, so the site's `connect-src 'self'` CSP blocked it outright and
+    // tinylink silently arrived undefined. The server derives the key from the same
+    // normalized URL, so what this returns is identical to what the pipeline would
+    // compute on its own; a failure here costs correctness nothing.
+    //
+    // Still synchronous, so the payload assembled below can use the result inline.
     function getTiny(url) {
-        var request_url = "https://genomevolution.org/r/yourls-api.php?signature=d57f67d3d9&action=shorturl&format=simple&url=" + url;
         var link;
-        // $.get(request_url, function( data ) {
-        //     link = data;
-        //     return link;
-        // });
         $.ajax({
-            url: request_url,
+            url: API_BASE_URL + "links",
+            data: { url: url },
+            dataType: "json",
             success: function(data) {
-                link = data;
+                link = data.link;
             },
             async: false
         });

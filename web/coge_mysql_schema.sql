@@ -589,6 +589,24 @@ CREATE TABLE `role` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `tiny_link`
+--
+-- Internal link shortener (replaced YOURLS). `keyword` IS the hash of `rel_url`
+-- -- see web/coge_tiny_link.sql for the rationale and the standalone migration.
+--
+
+DROP TABLE IF EXISTS `tiny_link`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `tiny_link` (
+  `keyword` char(12) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `rel_url` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`keyword`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `user`
 --
 

@@ -33,6 +33,7 @@ lib/CoGeX/Result/Organism.pm
 lib/CoGeX/Result/Permission.pm
 lib/CoGeX/Result/RolePermissionConnector.pm
 lib/CoGeX/Result/Role.pm
+lib/CoGeX/Result/TinyLink.pm
 lib/CoGeX/Result/UserGroupConnector.pm
 lib/CoGeX/Result/UserGroup.pm
 lib/CoGeX/Result/User.pm

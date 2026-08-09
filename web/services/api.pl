@@ -21,6 +21,7 @@ use CoGe::Services::API::Genome;
 use CoGe::Services::API::Experiment;
 use CoGe::Services::API::Notebook;
 use CoGe::Services::API::Feature;
+use CoGe::Services::API::Link;
 use CoGe::Services::API::User;
 use CoGe::Services::API::Group;
 print STDERR '=' x 80, "\n== CoGe API\n", '=' x 80, "\n";
@@ -124,6 +125,21 @@ app->hook( # mdb added 1/9/17
         }
     }
 );
+
+# Tiny link routes -- the internal replacement for YOURLS.
+#
+# /r/:keyword is the redirect the short links themselves point at. Apache proxies
+# <base>/r/ straight to this app (see coge-main.conf) so the public link stays
+# short; the /api/v1/r/ form below is the same route reached through the normal
+# API prefix. Keyword is \w+ by construction (base36) -- see
+# CoGe::Accessory::Web::tiny_link_keyword.
+$r->get("/r/:keyword" => [keyword => qr/\w+/])
+    ->name("tiny-link-resolve")
+    ->to("link#resolve", namespace => 'CoGe::Services::API', keyword => undef);
+
+$r->get("/links")
+    ->name("tiny-link-create")
+    ->to("link#create", namespace => 'CoGe::Services::API');
 
 # Global Search routes
 $r->get("/global/search/#term")

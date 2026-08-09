@@ -25,7 +25,7 @@ use Socket qw(getaddrinfo getnameinfo SOCK_STREAM NI_NUMERICHOST NIx_NOSERV);
 use JSON;
 use HTTP::Request;
 use XML::Simple;
-use Digest::MD5 qw(md5_base64);
+use Digest::MD5 qw(md5_base64 md5_hex);
 use POSIX qw(!tmpnam !tmpfile);
 use Mail::Mailer;
 use URI;
@@ -77,6 +77,7 @@ BEGIN {
                    schedule_job render_template ftp_get_path ftp_get_file split_url url_is_public_fetch_safe
                    parse_proxy_response jwt_decode_token add_user write_log log_history
                    download_url_for get_command_path get_tiny_link
+                   tiny_link_relative_url tiny_link_keyword
                );
 
     $PAYLOAD_ERROR = "The request could not be decoded";
@@ -962,49 +963,149 @@ sub log_history {
     );
 }
 
+###############################################################################
+# Internal link shortener
+#
+# Replaces the self-hosted YOURLS instance this used to call over HTTP. Links are
+# minted from the `tiny_link` table in the main CoGe database (see
+# web/coge_tiny_link.sql); /r/<keyword> is resolved by CoGe::Services::API::Link.
+#
+# The keyword is DERIVED from the URL rather than allocated, which is what makes
+# the replacement safe: several consumers treat the key as a stable identifier and
+# would break if the same URL ever mapped to two keys --
+#   * get_job() below dedups prior Job rows by link;
+#   * SynMap names its result files after the key (<key>.log,
+#     dotplot_dots_<key>.cfg under DIAGSDIR) and, because its workflows are built
+#     with init => 0, an identical re-run must find the files the first run wrote;
+#   * web/js/pages/synmap.js re-derives the same key client-side from the job URL;
+#   * SynFind names its workflow synfind-<key>, extracting it with /(\w+)$/.
+# Hashing gives that by construction -- more strongly than YOURLS did, whose
+# determinism only lasted as long as its database.
+###############################################################################
+
+# Reduce a URL to the form stored in the table: relative to the SERVER base, e.g.
+# "http://genomevolution.org/coge/SynMap.pl?dsgid1=1" -> "SynMap.pl?dsgid1=1".
+#
+# Storing only the relative form is load-bearing, not tidiness:
+#   * an off-site target becomes unmintable by construction, so the open-redirect
+#     class that the public YOURLS signature exposed disappears without a
+#     validation list;
+#   * scheme/host aliases of the same page converge on ONE key -- today init()
+#     hardcodes http://$SERVER_NAME while the pipeline code uses config SERVER, so
+#     the same page can mint two different keys;
+#   * links survive a domain rename or an http->https switch, since the redirect
+#     re-attaches whatever SERVER is current.
+sub tiny_link_relative_url {
+    my $url = shift;
+    return unless defined $url;
+
+    # Drop scheme://host, leaving an absolute path (a relative URL is left alone).
+    $url =~ s{^\w+://[^/]*}{};
+
+    # Drop the SERVER base path (SERVER carries one, e.g. ".../coge/").
+    my $conf = get_defaults();
+    my $base = $conf ? $conf->{SERVER} : undef;
+    if ($base) {
+        $base =~ s{^\w+://}{};  # tolerate a scheme-less SERVER, e.g. "host/coge/"
+        $base =~ s{^[^/]*}{};   # -> "/coge/"
+        $base =~ s{/+$}{};      # -> "/coge"
+        $url =~ s{^\Q$base\E(?=/|$)}{}i if length $base;
+    }
+
+    $url =~ s{^/+}{};
+    return $url;
+}
+
+sub tiny_link_keyword {
+    my $rel_url = shift;
+
+    # md5_hex operates on bytes; a job title carried in the query string may have
+    # been decoded to characters, which would otherwise die here.
+    utf8::encode($rel_url) if utf8::is_utf8($rel_url);
+
+    # 62 bits of digest -> exactly 12 base36 characters. 62 rather than 64 so the
+    # value stays inside a signed 64-bit IV and the division loop below is exact
+    # integer arithmetic instead of rounding through an NV.
+    my $n = hex( substr( md5_hex($rel_url), 0, 16 ) ) >> 2;
+
+    # base36, lowercase -- NOT base64url. The alphabet must stay within \w because
+    # SynFind extracts the key with /(\w+)$/ (a '-' would silently truncate it), and
+    # it must stay single-case because keys become filenames and any case-insensitive
+    # filesystem in the toolchain could otherwise collide two of them.
+    my @alphabet = ( 0 .. 9, 'a' .. 'z' );
+    my $keyword = '';
+    {
+        use integer;
+        for ( 1 .. 12 ) {
+            $keyword = $alphabet[ $n % 36 ] . $keyword;
+            $n /= 36;
+        }
+    }
+
+    return $keyword;
+}
+
 sub get_tiny_link {
-    my %opts            = @_;
-    my $url             = $opts{url};
-#    my $db              = $opts{db};
-#    my $user_id         = $opts{user_id};
-#    my $page            = $opts{page};
-#    my $log_msg         = $opts{log_msg};
-#    my $disable_logging = $opts{disable_logging};    # flag
+    my %opts = @_;
+    my $url  = $opts{url};
 
-    $url =~ s/:::/__/g;
+    # user_id/page/log_msg/disable_logging are still accepted by some of the ~20
+    # call sites and, as under YOURLS, ignored. db is used if the caller has one.
+    my $db = $opts{db};
 
-    #FIXME: Hack for tiny link service
-    $url =~ s/&/;/g;
+    return $url unless defined $url && length $url;
 
-    my $request_url = "http://host.docker.internal:60501/yourls-api.php?signature=705e463d8f&action=shorturl&format=simple&url=$url";
+    my $rel_url = tiny_link_relative_url($url);
+    return $url unless defined $rel_url && length $rel_url;
 
-# mdb removed 1/8/14, issue 272
-#    my $tiny = LWP::Simple::get($request_url);
-#	 unless ($tiny) {
-#        return "Unable to produce tiny url from server";
-#    }
-#    return $tiny;
+    my $keyword = tiny_link_keyword($rel_url);
 
-    # mdb added 1/8/14, issue 272
-    my $ua = new LWP::UserAgent;
-    my $response_url;
+    my $conf = get_defaults();
+    my $server = ( $conf && $conf->{SERVER} ) ? $conf->{SERVER} : '';
+    $server =~ s{/*$}{/};
+    my $link = $server . 'r/' . $keyword;
 
-	$ua->timeout(10);
-	my $response = $ua->get($request_url);
-	if ($response->code == 200 or $response->code == 400) {
-        $response_url = $response->decoded_content;
-	}
-	else {
-	print STDERR "Debug Tiny URL";
-	print STDERR $response->as_string;
-        cluck("Unable to produce tiny url from server falling back to url");
+    my $ok = eval {
+        $db = CoGeX->dbconnect($conf) unless $db;
+        $db->storage->dbh_do(
+            sub {
+                my ( $storage, $dbh ) = @_;
+
+                # Idempotent and race-free: concurrent callers writing the same URL
+                # write identical rows, so there is nothing to retry.
+                my $rows = $dbh->do(
+                    'INSERT IGNORE INTO tiny_link (keyword, rel_url) VALUES (?, ?)',
+                    undef, $keyword, $rel_url
+                );
+
+                # 0 rows means the keyword already existed -- almost always this same
+                # URL being shortened again. Confirm that, because the alternative is
+                # a hash collision that would hand the caller a link resolving to
+                # someone else's page. At 62 bits that needs ~2e9 links for even odds
+                # (~1e-5 at 10M rows); complain loudly rather than lengthening the key
+                # on collision, since a length that depended on table state would give
+                # up the determinism this whole design rests on.
+                return if !defined $rows || $rows != 0;
+
+                my ($stored) = $dbh->selectrow_array(
+                    'SELECT rel_url FROM tiny_link WHERE keyword = ?',
+                    undef, $keyword
+                );
+                cluck( "get_tiny_link: keyword collision on '$keyword': stored '"
+                      . ( defined $stored ? $stored : '' )
+                      . "' but asked for '$rel_url'" )
+                  if defined $stored && $stored ne $rel_url;
+            }
+        );
+        1;
+    };
+    unless ($ok) {
+        # Kept from the YOURLS implementation: callers tolerate a long URL back.
+        cluck("Unable to create tiny link ($@), falling back to url");
         return $url;
-	}
+    }
 
-    # check if the tiny link is a validate url
-    return $url unless is_uri($response_url);
-
-    return $response_url;
+    return $link;
 }
 
 sub schedule_job {

@@ -11,6 +11,7 @@ lib/CoGe/Services/API/Genome.pm
 lib/CoGe/Services/API/Genome2.pm
 lib/CoGe/Services/API/Group.pm
 lib/CoGe/Services/API/Job.pm
+lib/CoGe/Services/API/Link.pm
 lib/CoGe/Services/API/Log.pm
 lib/CoGe/Services/API/Notebook.pm
 lib/CoGe/Services/API/Organism.pm
