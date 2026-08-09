@@ -29,7 +29,7 @@ sub gen_html {
 	                  TITLE       => "Search Results",
 	                  PAGE_LINK   => $LINK,
 	                  SUPPORT_EMAIL => $CONF->{SUPPORT_EMAIL},
-	                  HOME        => $CONF->{SERVER},
+	                  HOME        => './',
                       HELP        => '',
                       WIKI_URL    => $CONF->{WIKI_URL} || '',
                       ADMIN_ONLY  => $USER->is_admin,
@@ -44,7 +44,7 @@ sub gen_html {
 
 sub gen_body {
 	my $template = HTML::Template->new( filename => $CONF->{TMPLDIR} . 'SearchResults.tmpl' );
-	$template->param( API_BASE_URL => $CONF->{SERVER} . 'api/v1/',
+	$template->param( API_BASE_URL => 'api/v1/',
 	                  USER_NAME   => $USER->user_name,
 					  USER_ID     => $USER->id,
 	                  SEARCH_TEXT => $SEARCH_TEXT,

@@ -115,7 +115,7 @@ sub gen_html {
                           PAGE_TITLE => 'BLAST',
         				  PAGE_LINK  => $LINK,
         				  SUPPORT_EMAIL => $P->{SUPPORT_EMAIL},
-        				  HOME       => $P->{SERVER},
+        				  HOME       => './',
                           HELP       => 'CoGeBlast',
                           WIKI_URL   => $P->{WIKI_URL} || '' );
         $template->param( USER => $USER->display_name || '' );

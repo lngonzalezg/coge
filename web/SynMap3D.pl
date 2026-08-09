@@ -71,7 +71,7 @@ sub generate_html {
             PAGE_TITLE   => $PAGE_TITLE,
             TITLE        => "SynMap 3D",
             PAGE_LINK    => $LINK,
-            HOME         => $CONF->{SERVER},
+            HOME         => './',
             HELP         => 'SynMap3d',
             WIKI_URL     => $CONF->{WIKI_URL} || '',
 
@@ -188,7 +188,7 @@ sub generate_body {
         EMBED         => $EMBED,
     	LOAD_ID       => $LOAD_ID,
     	WORKFLOW_ID   => $WORKFLOW_ID,
-        API_BASE_URL  => $CONF->{SERVER} . 'api/v1/', #TODO move into config file or module
+        API_BASE_URL  => 'api/v1/', #TODO move into config file or module
         SERVER_URL    => $CONF->{SERVER},
         #DATA_LOC      => $CONF->{SYN3DIR},
         DATA_LOC      => catdir($CONF->{URL}, "data", "syn3d"),

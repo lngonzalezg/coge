@@ -107,7 +107,7 @@ sub gen_html {
             PAGE_LINK                => $LINK,
             SUPPORT_EMAIL            => $P->{SUPPORT_EMAIL},
             HEAD                     => qq{},
-            HOME                     => $P->{SERVER},
+            HOME                     => './',
             HELP                     => 'OrganismView',
             WIKI_URL                 => $P->{WIKI_URL} || '',
             ADMIN_ONLY               => $USER->is_admin,

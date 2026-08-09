@@ -88,7 +88,7 @@ sub gen_html {
 				      TITLE      => 'FastaView',
     				  PAGE_LINK  => $LINK,
     				  SUPPORT_EMAIL => $P->{SUPPORT_EMAIL},
-    				  HOME       => $P->{SERVER},
+    				  HOME       => './',
                       HELP       => 'FastaView',
                       WIKI_URL   => $P->{WIKI_URL} || '',
                       USER => $USER->display_name || '' );

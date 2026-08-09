@@ -55,7 +55,7 @@ sub gen_html {
         				  ADMIN_ONLY => $USER->is_admin,
         				  CAS_URL    => $P->{CAS_URL} || '',
         				  COOKIE_NAME => $P->{COOKIE_NAME} || '',
-        				  HOME       => $P->{SERVER},
+        				  HOME       => './',
                           HELP       => 'GroupView',
                           WIKI_URL   => $P->{WIKI_URL} || '' );
         $template->param( LOGON      => 1 ) unless $USER->user_name eq "public";

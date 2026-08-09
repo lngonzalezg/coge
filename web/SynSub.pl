@@ -79,7 +79,7 @@ sub gen_html {
                       TITLE      => 'Synteny Substitution Matrix',
                       SUPPORT_EMAIL => $P->{SUPPORT_EMAIL},
                       HEAD       => qq{},
-                      HOME       => $P->{SERVER},
+                      HOME       => './',
                       HELP       => 'SynSub',
                       WIKI_URL   => $P->{WIKI_URL} || '',
                       USER       => $USER->display_name || '' );

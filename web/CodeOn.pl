@@ -77,7 +77,7 @@ sub gen_html {
     $template->param( TITLE      => 'Coding Sequence Evolution',
                       PAGE_TITLE => 'CodeOn',
                       SUPPORT_EMAIL => $P->{SUPPORT_EMAIL},
-                      HOME       => $P->{SERVER},
+                      HOME       => './',
                       HELP       => 'CodeOn',
                       WIKI_URL   => $P->{WIKI_URL} || '',
                       USER       => $USER->display_name || '' );

@@ -52,7 +52,7 @@ sub generate_html {
         TITLE      => 'Accelerating <span style="color: #119911">Co</span>mparative <span style="color: #119911">Ge</span>nomics',
         PAGE_TITLE => 'Comparative Genomics',
         PAGE_LINK  => $LINK,
-        HOME       => $CONF->{SERVER},
+        HOME       => './',
         HELP       => '',
         WIKI_URL   => $CONF->{WIKI_URL} || '',
         USER       => $USER->display_name || undef,

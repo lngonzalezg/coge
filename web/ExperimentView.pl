@@ -312,7 +312,7 @@ sub gen_html {
             TITLE      => 'ExperimentView',
             PAGE_LINK  => $LINK,
             SUPPORT_EMAIL => $P->{SUPPORT_EMAIL},
-            HOME       => $P->{SERVER},
+            HOME       => './',
             HELP       => 'ExperimentView',
             WIKI_URL   => $P->{WIKI_URL} || '',
             CAS_URL    => $P->{CAS_URL} || '',
@@ -368,7 +368,7 @@ sub gen_body {
         POPGEN_RESULT_URL => $popgenUrl,
         PUBLIC            => $USER->user_name eq "public" ? 1 : 0,
         ADMIN_AREA        => $USER->is_admin,
-        API_BASE_URL      => $P->{SERVER} . 'api/v1/', #TODO move into config file or module
+        API_BASE_URL      => 'api/v1/', #TODO move into config file or module
         USER_CAN_EDIT     => $exp->is_editable($USER)
     );
     $template->param( LOGON => 1 ) unless $USER->user_name eq "public";

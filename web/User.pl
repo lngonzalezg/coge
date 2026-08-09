@@ -120,7 +120,7 @@ sub gen_html {
 	    TITLE      => "My Data",
         PAGE_LINK  => $LINK,
 		SUPPORT_EMAIL => $CONF->{SUPPORT_EMAIL},
-		HOME       => $CONF->{SERVER},
+		HOME       => './',
         HELP       => 'User',
         WIKI_URL   => $CONF->{WIKI_URL} || '',
         ADMIN_ONLY => $USER->is_admin,

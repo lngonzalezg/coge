@@ -185,7 +185,7 @@ sub gen_html {
     my ($body) = gen_body();
 	$template->param( BODY => $body );
 	$template->param(
-		HOME       => $config->{SERVER},
+		HOME       => './',
 		HELP       => 'SynMap',
 		WIKI_URL   => $config->{WIKI_URL} || '',
 		ADMIN_ONLY => $USER->is_admin,
@@ -200,7 +200,7 @@ sub gen_body {
 
 	$template->param(
 		MAIN => 1,
-		API_BASE_URL  => $config->{SERVER} . 'api/v1/', #TODO move into config file or module
+		API_BASE_URL  => 'api/v1/', #TODO move into config file or module
         MWIDTH => $FORM->param('w') || 0,
         SUPPORT_EMAIL => $config->{SUPPORT_EMAIL},
         USER_NAME => $USER->user_name

@@ -85,7 +85,7 @@ sub gen_html {
 		              TITLE      => 'GenomeList',
     		          PAGE_LINK  => $LINK || '',
     		          SUPPORT_EMAIL => $P->{SUPPORT_EMAIL},
-		              HOME       => $P->{SERVER},
+		              HOME       => './',
                       HELP       => 'GenomeList',
                       WIKI_URL   => $P->{WIKI_URL} || '',
                       USER       => $USER->display_name || '' );

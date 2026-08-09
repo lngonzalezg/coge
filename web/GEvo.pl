@@ -172,7 +172,7 @@ sub gen_html {
     				  PAGE_TITLE => 'GEvo',
     				  PAGE_LINK  => $LINK,
     				  SUPPORT_EMAIL => $P->{SUPPORT_EMAIL},
-    				  HOME       => $P->{SERVER},
+    				  HOME       => './',
                       HELP       => 'GEvo',
                       WIKI_URL   => $P->{WIKI_URL} || '' );
     $template->param( USER   => $USER->display_name || '' );

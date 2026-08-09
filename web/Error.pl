@@ -27,7 +27,7 @@ sub gen_html {
 				      TITLE      => "Error",
     				  PAGE_LINK  => $LINK,
     				  SUPPORT_EMAIL => $CONF->{SUPPORT_EMAIL},
-    				  HOME       => $CONF->{SERVER},
+    				  HOME       => './',
                       HELP       => '',
                       WIKI_URL   => $CONF->{WIKI_URL} || '',
                       ADMIN_ONLY => $USER->is_admin,

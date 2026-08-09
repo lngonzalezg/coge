@@ -126,7 +126,7 @@ sub gen_html {
 	                  PAGE_LINK  => $link,
 	                  SUPPORT_EMAIL => $config->{SUPPORT_EMAIL},
 	                  TITLE      => "GODVIEW",
-	                  HOME       => $config->{SERVER},
+	                  HOME       => './',
                       HELP       => '',
                       WIKI_URL   => $config->{WIKI_URL} || '',
                       CAS_URL    => $config->{CAS_URL} || '',
@@ -149,7 +149,7 @@ sub gen_body {
 	my $template =
 	  HTML::Template->new( filename => $config->{TMPLDIR} . 'Admin.tmpl' );
 	$template->param( 	MAIN 			=> 1,
-						API_BASE_URL  	=> $config->{SERVER} . 'api/v1/',  
+						API_BASE_URL  	=> 'api/v1/',  
 						USER			=> $user->user_name,	
 					);
 

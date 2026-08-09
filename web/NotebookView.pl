@@ -96,7 +96,7 @@ sub gen_html {
             TITLE      => "NotebookView",
             PAGE_LINK  => $LINK,
             SUPPORT_EMAIL => $P->{SUPPORT_EMAIL},
-            HOME       => $P->{SERVER},
+            HOME       => './',
             HELP       => 'NotebookView',
             WIKI_URL   => $P->{WIKI_URL} || ''
         );
@@ -131,7 +131,7 @@ sub gen_body {
         NOTEBOOK_ID  => $lid,
         WORKFLOW_ID  => $WORKFLOW_ID,
         DEFAULT_TYPE => 'note',
-        API_BASE_URL => $P->{SERVER} . 'api/v1/', #TODO move into config file or module
+        API_BASE_URL => 'api/v1/', #TODO move into config file or module
         USER         => $USER->user_name,
         USER_CAN_EDIT  => $list->is_editable($USER) ? JSON::true : JSON::false,
         NOTEBOOK_TITLE => $title,

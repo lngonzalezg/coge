@@ -84,7 +84,7 @@ sub gen_html {
     $template->param( PAGE_TITLE => "tRNAView",
                       TITLE      => 'CoGe tRNA and tmRNA Search Tool',
                       SUPPORT_EMAIL => $P->{SUPPORT_EMAIL},
-                      HOME       => $P->{SERVER},
+                      HOME       => './',
                       HELP       => 'tRNAView',
                       WIKI_URL   => $P->{WIKI_URL} || '',
                       USER       => $USER->display_name || '' );

@@ -119,7 +119,7 @@ sub gen_html {
                       PAGE_TITLE => 'SynFind',
                       PAGE_LINK  => $LINK,
                       SUPPORT_EMAIL => $config->{SUPPORT_EMAIL},
-                      HOME       => $config->{SERVER},
+                      HOME       => './',
                       HELP       => 'SynFind',
                       WIKI_URL   => $config->{WIKI_URL} || '',
 		              USER       => $USER->display_name || '' );

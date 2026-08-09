@@ -74,7 +74,7 @@ sub gen_html {
       HTML::Template->new( filename => $P->{TMPLDIR} . 'generic_page.tmpl' );
     $template->param( TITLE      => 'Sequence Alignment Matrix View',
                       PAGE_TITLE => 'MatrixView',
-                      HOME       => $P->{SERVER},
+                      HOME       => './',
                       HELP       => 'MatrixView',
                       WIKI_URL   => $P->{WIKI_URL} || '',
                       HEAD       => qq{},

@@ -40,7 +40,7 @@ sub gen_html {
             PAGE_LINK  => $LINK,
             SUPPORT_EMAIL => $CONF->{SUPPORT_EMAIL},
 	        TITLE      => 'Genome Viewer',
-	        HOME       => $CONF->{SERVER},
+	        HOME       => './',
             HELP       => 'GenomeView',
             WIKI_URL   => $CONF->{WIKI_URL} || '',
             ADMIN_ONLY => $USER->is_admin,
@@ -70,7 +70,7 @@ sub gen_body {
                       EMBED => $EMBED ? 1 : 0,
 	                  HEIGHT => ($EMBED ? '99%' : '80%'),
 	                  WIDTH => ($EMBED ? '99%' : '100%'),
-	                  API_BASE_URL => $CONF->{SERVER} . 'api/v1/jbrowse', # mdb added base URL, 2/3/15 COGE-289
+	                  API_BASE_URL => 'api/v1/jbrowse', # mdb added base URL, 2/3/15 COGE-289
 	                  USER_NAME => $USER->user_name
 	);
 
