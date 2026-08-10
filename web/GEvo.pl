@@ -1291,7 +1291,9 @@ sub run {
     }
     $html .= '<svg id="svg" style="position:absolute;top:0;left:0;width:100%;height:100%;" onclick="svg_click(event)" onmousedown="svg_mousedown(event)" onmousemove="svg_mousemove(event)" onmouseleave="svg_mouseleave(event)"></svg></div><script>var basename=\'' . basename($cogeweb->basefile) . '\';var num_img=' . (scalar @sets) . ';setup_images();images_loaded();</script>';
     $html .=
-qq{<a href="http://genomevolution.org/wiki/index.php/Gobe" class="small" style="color: red" target=_new>Click here for help!</a>  <a href="http://get.adobe.com/flashplayer/" class="small" target=_new >No results?  Rerun by pressing "Run GEvo Analysis!" again.</a>.};
+      # The rerun hint used to link to get.adobe.com/flashplayer -- Gobe has been SVG
+      # rather than Flash for years, so the advice stays and the dead link goes.
+qq{<a href="http://genomevolution.org/wiki/index.php/Gobe" class="small" style="color: red" target=_new>Click here for help!</a>  <span class="small">No results?  Rerun by pressing "Run GEvo Analysis!" again.</span>};
     $html .= $gobe_buttons;
     $html .= qq{<table class=small>};
     $html .= qq{<tr valign=top><td><span class=bold>Alignment reports</span>};
