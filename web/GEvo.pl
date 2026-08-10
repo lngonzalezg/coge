@@ -182,9 +182,12 @@ sub gen_html {
     $template->param( ADMIN_ONLY => $USER->is_admin,
                       CAS_URL    => $P->{CAS_URL} || '',
                       COOKIE_NAME => $P->{COOKIE_NAME} || '' );
-    my $prebox = HTML::Template->new( filename => $P->{TMPLDIR} . 'GEvo.tmpl' );
-    $prebox->param( RESULTS_DIV => 1 );
-    $template->param( PREBOX     => $prebox->output );
+    # POSTBOX, not PREBOX: generic_page.tmpl renders PREBOX above BODY, which put the
+    # results panel above the setup form no matter where it sat in GEvo.tmpl. Results
+    # belong under the Run button, as on CoGeBlast.
+    my $postbox = HTML::Template->new( filename => $P->{TMPLDIR} . 'GEvo.tmpl' );
+    $postbox->param( RESULTS_DIV => 1 );
+    $template->param( POSTBOX    => $postbox->output );
     $html .= $template->output;
     return $html;
 }

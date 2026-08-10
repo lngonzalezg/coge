@@ -214,12 +214,39 @@ Gobe.handle_html= function (html) {
   $('#results_info').html(html);
 
   if ( !$('#results_info').dialog('isOpen') && html && !html.match(/multiple hits/) ) {
-   // $('#results_info').dialog('option', 'position', 'right');
-   var xpos = $(document).width - 500;
-   $('#results_info').dialog('option', 'position', ['right', 100]);
+   // Open next to the HSP that was clicked. This used to be pinned to ['right', 100]
+   // -- the top-right of the window -- which on a scrolled-down page put the info off
+   // near the header, far from what you clicked.
+   // Bound the height first: an HSP's annotation can run to tens of kilobytes, and a
+   // dialog taller than the viewport can't be placed beside anything. Capped, it
+   // scrolls internally and stays by the click.
+   $('#results_info').dialog('option', 'maxHeight',
+     Math.max(240, Math.round($(window).height() * 0.6)));
+   // jQuery UI focuses the dialog on open, and the browser scrolls to whatever gets
+   // focus -- that was the jump back to the top of the page. Put the scroll back.
+   var sx = window.scrollX, sy = window.scrollY;
    $('#results_info').dialog('open');
+   window.scrollTo(sx, sy);
+   position_info_dialog(pageObj.last_gobe_click);
   }
 };
+
+// Place the info dialog beside the HSP that was clicked. Done by hand rather than via
+// the dialog's 'position' option: jQuery UI forces at:"left top" whenever 'of' is an
+// event, so the offsets are silently dropped. Sizing has to happen first, hence the
+// call after open().
+function position_info_dialog(click) {
+  var widget = $('#results_info').dialog('widget');
+  if (!widget.length) return;
+  var box = widget[0].getBoundingClientRect();
+  var vw = $(window).width(), vh = $(window).height();
+  var left = click ? click.clientX + 20 : vw - box.width - 20;
+  var top  = click ? click.clientY + 20 : 20;
+  // keep it fully on screen
+  left = Math.max(8, Math.min(left, vw - box.width - 8));
+  top  = Math.max(8, Math.min(top,  vh - box.height - 8));
+  widget.css({top: Math.round(top + window.scrollY), left: Math.round(left + window.scrollX)});
+}
 
 function open_all_sequence_option_menus(open) {
    if (open)
@@ -258,10 +285,10 @@ $(document).ready(function(){
         $("#error-box").removeClass("hidden");
     }
 
-    // close the dialog box when the run a new analysis.
+    // close the dialog box when the run a new analysis. (No scroll-to-top: the run
+    // popup is modal and the results scroll themselves into view when it closes.)
     jQuery('.go_run').click(function(){
         $('#results_info').dialog('close');
-        jQuery('html, body').animate({scrollTop: 0}, 2000);
     });
 
     if(window.location.toString().indexOf('autogo') != -1){
@@ -353,6 +380,7 @@ function address_validity_check(validity){
 function rset () {
  var num_seqs = $("#num_seqs").val();
  $("#results").html(" ");
+ $("#results_section").addClass('hidden');
 
  for (var i =1; i<= num_seqs; i++)
   {
@@ -510,6 +538,52 @@ else if (alignment == 'GenomeThreader')
 
  }
 
+/*
+ * Progress popup, following CoGeBlast's #status_dialog contract: the dialog holds
+ * the running/complete/error states while the analysis runs, and the results panel
+ * below the form is revealed once the dialog is dismissed. monitor_log() feeds
+ * .dialog-text; handle_results() calls finish_status_dialog().
+ */
+function open_status_dialog() {
+    var dialog = $('#status_dialog');
+    dialog.find('.dialog-error,.dialog-complete').hide();
+    dialog.find('.dialog-running').show();
+    dialog.find('.dialog-text').html('');
+    dialog.dialog('option', {modal: true, title: 'Running GEvo ...'});
+    $('#results_section').slideUp(function() { $(this).addClass('hidden'); });
+    dialog.dialog('open');
+}
+
+function status_dialog_message(html) {
+    // The run usually finishes before the next scheduled read_log poll, so ignore
+    // late progress ticks -- otherwise "next check in 32 seconds" outlives "Finished!".
+    if (pageObj.run_complete) return;
+    $('#status_dialog').find('.dialog-text').html(html);
+}
+
+function finish_status_dialog(failed) {
+    var dialog = $('#status_dialog');
+    if (pageObj.run_complete) return;
+    pageObj.run_complete = 1;
+    dialog.find('.dialog-running').hide();
+    dialog.find(failed ? '.dialog-error' : '.dialog-complete').show();
+    dialog.dialog('option', 'title', failed ? 'GEvo' : 'GEvo - finished');
+    if (!failed) {
+        dialog.find('.dialog-text').html("<div class=small>Analysis complete.</div>");
+    }
+    // Reveal the results below only once the popup is out of the way, then scroll
+    // them into view -- on a tall form they otherwise land below the fold.
+    dialog.off('dialogclose').on('dialogclose', function() {
+        if (failed) return;
+        $('#results_section').removeClass('hidden').slideDown(function() {
+            this.scrollIntoView({behavior: 'smooth', block: 'start'});
+        });
+    });
+    // A finished run needs no acknowledgement, so close straight away and let the
+    // handler above show the results. Only an error waits for the user.
+    if (!failed) dialog.dialog('close');
+}
+
 function handle_results (html,w, h, img_base, n_images, gevo_link, basefilename, message) {
  alert_message(message);
  populate_page_obj(basefilename);
@@ -540,10 +614,12 @@ function handle_results (html,w, h, img_base, n_images, gevo_link, basefilename,
       if (!pageObj.orig_dirstarts) {pageObj.orig_dirstarts=[];}
       pageObj.orig_dirstarts[i]=$('#dirstart'+i).val();
      }
+    finish_status_dialog(false);
    }
   else
   {
     $('#results').html('');
+    finish_status_dialog(true);
   }
   if (gevo_link)
    {
@@ -713,11 +789,17 @@ function monitor_log(log)
     message+="<br/>Next progress check in "+waittime/1000+" seconds.";
     if (ajax.length) {setTimeout("read_log(['args__logfile', 'args__'+pageObj.basefile, 'args__tempdir', 'args__'+pageObj.tempdir], [monitor_log])",waittime);}
   }
-  else
+  else if (!pageObj.finished)
   {
+   // Only a stalled run is an error. This branch used to be a bare else, so it also
+   // fired on success -- harmless while the text landed in #results (handle_results
+   // overwrote it), but the popup outlives the run and would show it verbatim.
    message = "There has been no update on your results during the first "+pageObj.waittime/1000+ "seconds of your analysis.  An error may have occured.  You can check your logfile at <a href='tmp/GEvo/"+pageObj.basefile+".log' target=_new>this link</a> which may help you determine what went wrong, or send it to CoGe's adminstrator for debugging.  In the meanwhile, we suggest that you either wait a bit longer to see if the analsysi completes, and if not rerun your analysis.  If you have submitting very large regions for anlaysis (e.g. several megabases), please try a smaller region for analsyis.";
+   status_dialog_message("<div class=small>"+message+'</div>');
+   finish_status_dialog(true);
+   return;
   }
-  if (message) $('#loading').html("<div class=small>"+message+'</div>');
+  if (message) status_dialog_message("<div class=small>"+message+'</div>');
 }
 
 /*
@@ -915,6 +997,10 @@ function images_loaded() {
 function svg_click(event) {
     var bbox = false;
     drag_started = false;
+    // Remembered for Gobe.handle_html, which runs in the ajax callback below and uses
+    // it to open the info dialog next to the click. Plain numbers, not the event --
+    // it is read long after the handler has returned.
+    pageObj.last_gobe_click = {clientX: event.clientX, clientY: event.clientY};
     if (!document.getElementById('bbox').hidden) {
         document.getElementById('bbox').hidden = 1;
         bbox = true;
@@ -1641,20 +1727,57 @@ Color <span style="color:#FF66FF;">masked</span> and <span style="color:#FF9900;
 
 
 <div class="padded">
-  <span id="go" class='ui-button ui-button-go ui-corner-all go_run coge-button-lg' onClick="populate_page_obj(); set_display_order(); loading([],['results']); go_run();">Run GEvo</span>
+  <span id="go" class='ui-button ui-button-go ui-corner-all go_run coge-button-lg' onClick="populate_page_obj(); set_display_order(); open_status_dialog(); go_run();">Run GEvo</span>
 </div>
 </form>
 </TMPL_IF>
 
 <TMPL_IF NAME="RESULTS_DIV">
-<table>
-  <tr>
-    <td>
-      <div id="results" name="results"></div>
-      <div id="results_info" class="dialog_box hidden" title="GEvo Results Info"></div>
-    </td>
-  </tr>
-</table>
+    <!-- Results render below the setup so the form stays in place. The heading and
+         the results are one unit so they reveal and hide together; handle_results()
+         only ever replaces #results, leaving the heading intact. -->
+    <div id="results_section" class="padded hidden" style="margin-top:1.5em;">
+        <h2 style="margin:0 0 0.5em; padding-bottom:0.3em; border-bottom:1px solid var(--coge-gray-2);">GEvo Results</h2>
+        <div id="results" name="results"></div>
+    </div>
+    <div id="results_info" class="dialog_box hidden" title="GEvo Results Info"></div>
+
+    <!-- Progress popup, mirroring CoGeBlast's #status_dialog. monitor_log() writes
+         into .dialog-text; handle_results() flips it to the complete state, and the
+         results below are revealed when the dialog is closed. -->
+    <div id="status_dialog" class="dialog_box hidden" title="Running GEvo ...">
+        <div class="dialog-text small ui-widget-content ui-corner-all inline" style="overflow-y:auto;width:450px;height:200px;color:dimgray;padding: 5px;">
+        </div>
+
+        <ul class="dialog-error horizontal padded hidden">
+            <li id="error_msg">An error occurred <img src="picts/thumbs_down.png"></li>
+            <li class="dialog-log small"></li>
+            <li id="cancel_button" class="r coge-button coge-button-danger coge-button-lg">
+                <span onClick="$('#status_dialog').dialog('close');" >
+                    Close
+                </span>
+            </li>
+        </ul>
+
+        <ul class="dialog-complete horizontal padded hidden">
+            <li>
+                <span>Finished!</span>
+                <img src="picts/thumbs_up.png">
+            </li>
+            <li id="ok_button" class="r coge-button">
+                <span onClick="$('#status_dialog').dialog('close');" >
+                    OK
+                </span>
+            </li>
+        </ul>
+
+        <ul class="dialog-running padded">
+            <li class="bottom">
+                <span id="loading_msg">Please wait ...</span>
+                <img src="picts/ajax-loader.gif"/>
+            </li>
+        </ul>
+    </div>
 
 <div id="save_form" title="Save GEvo Results" class="hidden">
 <table>
