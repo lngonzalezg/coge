@@ -948,11 +948,23 @@ sub get_jobs_for_user {
 
 	return encode_json({ error => 'Not logged in' }) if ($user->is_public);
 
-	# Get workflows from DB
+	# Get workflows from DB.
+	# JEX/Yerba recycles workflow ids, so the same parent_id shows up in the log
+	# once per run -- possibly under different users. Only the newest log entry
+	# describes the workflow the JEX server currently holds under that id, so
+	# pick MAX(log_id) per parent_id rather than letting GROUP BY choose a row.
+	# The user filter is applied *after* that pick (not inside it) so a stale
+	# entry of our own can't shadow somebody else's current run.
 	my $where = 'parent_id IS NOT NULL and type != 0';
 	$where .= ' AND page=' . $db->dbh->quote($name) if $name;
-	$where .= ' AND log.user_id=' . $user->id if !$user->is_admin;
-	my $logs = $db->storage->dbh->selectall_arrayref('SELECT page,link,parent_id,user_name FROM (SELECT page,link,parent_id,user_name,time FROM log JOIN user ON user.user_id=log.user_id WHERE ' . $where . ' ORDER BY log_id DESC) t GROUP BY parent_id ORDER BY time DESC');
+	my $filter = '';
+	$filter = ' WHERE log.user_id=' . $user->id if !$user->is_admin;
+	my $logs = $db->storage->dbh->selectall_arrayref(
+		  'SELECT log.page,log.link,log.parent_id,user.user_name FROM log'
+		. ' JOIN (SELECT MAX(log_id) AS log_id FROM log WHERE ' . $where . ' GROUP BY parent_id) newest ON newest.log_id=log.log_id'
+		. ' LEFT JOIN user ON user.user_id=log.user_id'
+		. $filter
+		. ' ORDER BY log.time DESC');
 
 	# Get workflows from JEX
     my $workflows;
@@ -1093,8 +1105,10 @@ sub _check_job_args {
     # a workflow (parent_id) to its user_id.
     return if !$user || $user->is_public;
     unless ( $user->is_admin ) {
+        # Workflow ids are recycled, so take the newest log entry -- an older
+        # run of the same id belongs to whoever ran it back then, not to us.
         my ($owner_id) = $db->storage->dbh->selectrow_array(
-            'SELECT user_id FROM log WHERE parent_id=? LIMIT 1', undef, $job_id );
+            'SELECT user_id FROM log WHERE parent_id=? ORDER BY log_id DESC LIMIT 1', undef, $job_id );
         unless ( defined $owner_id && $owner_id == $user->id ) {
             say STDERR "Admin.pl: user " . $user->id . " denied cancel/restart of job $job_id";
             return;

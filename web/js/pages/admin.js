@@ -919,6 +919,7 @@ function JobGrid(params) {
 	this.timers = new Array();
 	this.updating = true;
 	this.flag = false;
+	this.refetch = false;
 	this.data;
 	this.table;
 	
@@ -943,6 +944,9 @@ $.extend(JobGrid.prototype, {
     	});
 		$('#' + self.elementId + '_running_checkbox').change(function(e) {
 			self.toggle_running.call(self);
+		});
+		$('#' + self.elementId + '_refresh').click( function () {
+			self.refresh.call(self);
 		});
 		$('#' + self.elementId + '_cancel').click( function () {
 			self.cancel_job.call(self);
@@ -982,10 +986,18 @@ $.extend(JobGrid.prototype, {
 		if(!self.flag) {
 			self.flag = true;
 			self.cancel_update();
+			$('#' + self.elementId + '_loading').show();
 			//$("#" + self.elementId + "_update_checkbox").prop('disabled', true);
 		    //$("#" + self.elementId + "_running_checkbox").prop('disabled', true);
 			$.ajax({
 				dataType: 'json',
+				// Post to the bare script, NOT the current URL (jQuery's default).
+				// After a CAS login the page URL still carries ?ticket=..., and
+				// every poll would replay that one-shot ticket at Web::init --
+				// which re-validates instead of reading the session cookie and
+				// rotates the session id, so sooner or later a request comes
+				// back {"error":"Not logged in"}.
+				url: 'Admin.pl',
 			    data: {
 			        fname: 'get_jobs',
 			        time_range: 0,
@@ -993,13 +1005,16 @@ $.extend(JobGrid.prototype, {
 			    },
 			    success: function(data) {
 			    	//console.log(data)
+			    	if (!data || !data.data) { // error response, or no payload
+			    		console.log('get_jobs: ' + ((data && data.error) || 'no data returned'));
+			    		return; // leave the previous rows alone rather than blanking the table
+			    	}
 			    	self.data = data.data;
 			    	self.table
 				    	.clear()
 				    	.rows.add(self.data)
 				    	.draw();
-					
-			    	$('#' + self.elementId + '_loading').hide();
+
 					$('#' + self.elementId).show();
 					self.table.columns.adjust(); // recompute now that the container is visible
 			    },
@@ -1018,9 +1033,23 @@ $.extend(JobGrid.prototype, {
                             }
                         } );
 			    	
+			    	if (self.refetch) { // filter changed (or Refresh clicked) mid-flight
+			    		self.refetch = false;
+			    		self.get_data.call(self); // leave the spinner up, we're still fetching
+			    		return;
+			    	}
+
+			    	$('#' + self.elementId + '_loading').hide();
 			    	self.schedule_update(10*1000);
 			    }
 			});
+		}
+		else {
+			// A fetch is already in flight. The unfiltered query takes several
+			// seconds, so dropping this one would make un-checking "Running"
+			// (or hitting Refresh) look like it did nothing -- re-run once the
+			// current request lands instead.
+			self.refetch = true;
 		}
 	},
 	update: function(delay) {
@@ -1044,7 +1073,12 @@ $.extend(JobGrid.prototype, {
 	toggle_running: function() {
 		var self = this;
 		self.running_only = (self.running_only ? 0 : 1);
-		self.get_data();
+		self.refresh();
+	},
+	refresh: function() {
+		var self = this;
+		self.cancel_update();
+		self.get_data.call(self);
 	},
 	cancel_job: function() {
 		var self = this;
@@ -1070,6 +1104,7 @@ $.extend(JobGrid.prototype, {
 		$.ajax({
 			type: "GET",
 			dataType: "json",
+			url: 'Admin.pl', // not the current URL -- see the note in get_data
 			data: argument_list,
 			success: function(data) {
 				//DO NOTHING (atm)
