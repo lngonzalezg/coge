@@ -441,10 +441,8 @@ var coge = window.coge = (function(namespace) {
 
             $("#tabs").removeClass("invisible");
 
-            // track analysis
             $("#synmap_go").on("click", function() {
                 coge.synmap.run_synmap();
-                ga('send', 'event', 'synmap', 'run');
             });
         },
 

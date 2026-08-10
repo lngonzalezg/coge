@@ -258,11 +258,6 @@ $(document).ready(function(){
         $("#error-box").removeClass("hidden");
     }
 
-    // track analysis
-    $("#go").on("click", function() {
-        ga('send', 'event', 'gevo', 'run');
-    });
-
     // close the dialog box when the run a new analysis.
     jQuery('.go_run').click(function(){
         $('#results_info').dialog('close');

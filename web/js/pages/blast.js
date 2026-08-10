@@ -641,7 +641,6 @@ function run_coge_blast() {
     generate_basefile().then(function(basename) {
         pageObj.basename = basename;
         blastOff("#status_dialog", "#results");
-        ga('send', 'event', 'cogeblast', 'run', 'coge');
     });
 }
 
@@ -1817,7 +1816,6 @@ function select_tab(event, ui) {
             blast_param_on_select('ncbi_radio','ncbi');
             button.unbind().click(function() {
                 select_blast();
-                ga('send', 'event', 'cogeblast', 'run', 'ncbi');
             }).html("Run NCBI BLAST");
 
             if (!initialized) {
