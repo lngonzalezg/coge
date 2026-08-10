@@ -6,13 +6,47 @@ import sqlite3
 import json  # replaced simplejson with json
 import urllib.request  # updated for Python 3
 
-TMPDIR = "../tmp/GEvo/"
-if not os.path.exists(TMPDIR):
-    TMPDIR = os.path.join(os.path.dirname(__file__), TMPDIR)
+def _tmpdir():
+    """GEvo's result dir, read from coge.conf's TEMPDIR.
+
+    The old "../tmp/GEvo/" relative to this file resolved to
+    web/tmp/GEvo/, which stopped existing once results moved out of the
+    web root -- sqlite3.connect then died with "unable to open database
+    file" and every gobe call 500'd. TEMPDIR is the same key the Perl
+    side uses to write these files, and the /opt/apache2/coge fallback
+    matches CoGe::Accessory::Web::get_defaults for an unset COGE_HOME.
+    """
+    conf = os.path.join(os.environ.get("COGE_HOME", "/opt/apache2/coge"),
+                        "coge.conf")
+    try:
+        with open(conf) as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split(None, 1)
+                if len(parts) == 2 and parts[0] == "TEMPDIR":
+                    return os.path.join(parts[1].strip(), "GEvo")
+    except (IOError, OSError):
+        pass
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "..", "tmp", "GEvo")
+
+
+TMPDIR = _tmpdir()
 DBTMPL = os.path.join(TMPDIR, "%s.sqlite")
 
 def getdb(dbname):
-    db = sqlite3.connect(DBTMPL % dbname)
+    # dbname is a basefile name from CoGe::Accessory::Web::initialize_basefile,
+    # so it is a single [\w.-] component; '..' would escape TMPDIR.
+    if ".." in dbname:
+        raise web.notfound()
+    path = DBTMPL % dbname
+    # webtmp is purged periodically, so a request for an expired result is
+    # expected -- 404 it rather than letting connect() raise into a 500.
+    if not os.path.exists(path):
+        raise web.notfound()
+    db = sqlite3.connect(path)
     db.row_factory = sqlite3.Row
     return db
 
@@ -189,9 +223,9 @@ class query(object):
 
 urls = (
     # the first pattern is always the sqlite db name. e.g.: /GEVo_WxUonWBr/info
-    '/([^\/]+)/info/', 'info',
-    '/([^\/]+)/follow/', 'follow',
-    '/([^\/]+)/query/', 'query',
+    '/([\w.\-]+)/info/', 'info',
+    '/([\w.\-]+)/follow/', 'follow',
+    '/([\w.\-]+)/query/', 'query',
 )
 
 
