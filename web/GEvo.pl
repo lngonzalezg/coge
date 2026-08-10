@@ -218,6 +218,11 @@ sub gen_body {
     }
     my @seq_nums;
     my @seq_sub;
+    # Sequences dropped below because the user cannot see the genome. Collected so the
+    # page can say so -- these used to be bare `next`s, leaving a form with no sequence
+    # panels, a Run button that threw on the fields that were never rendered, and no
+    # hint that permissions were the reason.
+    my @denied;
 
     my $index = 1;
     for ( my $i = 1 ; $i <= $num_seqs ; $i++ ) {
@@ -250,9 +255,12 @@ sub gen_body {
             ($draccn) = $feat->names if $feat;
 
             # Check for available genomes
-            next unless grep {
+            unless ( grep {
                 $USER->has_access_to_genome($_) # mdb added 7/16/15
-            } $feat->dataset->genomes;
+            } $feat->dataset->genomes ) {
+                push @denied, { num => $i, what => "feature $fid" };
+                next;
+            }
 
             unless ($draccn)                    #no name!  This is a problem
             {
@@ -267,16 +275,22 @@ sub gen_body {
             my $dataset = $coge->resultset("Dataset")->find($dsid);
 
             if ($dataset) {
-                next unless grep {
-                    $USER->has_access_to_genome($_) # mdb added 7/16/15 
-                } $dataset->genomes;
+                unless ( grep {
+                    $USER->has_access_to_genome($_) # mdb added 7/16/15
+                } $dataset->genomes ) {
+                    push @denied, { num => $i, what => "dataset $dsid" };
+                    next;
+                }
             }
         }
 
         ## Check if the genome was deleted
         if ($dsgid) {
             my $genome = $coge->resultset('Genome')->find($dsgid);
-            next unless $genome && $USER->has_access_to_genome($genome); # mdb added 7/16/15
+            unless ( $genome && $USER->has_access_to_genome($genome) ) { # mdb added 7/16/15
+                push @denied, { num => $i, what => "genome $dsgid" };
+                next;
+            }
         }
 
         if ($draccn) {
@@ -644,15 +658,33 @@ sub gen_body {
     $template->param( SEQ_RETRIEVAL => 1 );
     $template->param( NUM_SEQS      => scalar @seq_sub);
 
+    # Say what was dropped for permissions, rather than silently rendering a form with
+    # missing sequences. Anonymous users hitting a link to restricted data are the
+    # common case, so point them at logging in.
+    if (@denied) {
+        $message .= "<BR/>" if $message;
+        $message .= "You do not have permission to view "
+          . join( ", ", map { "sequence $_->{num} ($_->{what})" } @denied ) . ". ";
+        $message .= ( !$USER || $USER->user_name =~ /public/i )
+          ? "Log in if you have access to this data."
+          : "Ask the owner to share it with you.";
+    }
+
     $message .= "<BR/>" if $message;
+
+    # Everything below is driven by the sequences that actually survived the access
+    # checks above, NOT by the requested $num_seqs: gen_go_run built JS referencing
+    # accn1..accnN, so a dropped sequence left it dereferencing a field that was never
+    # rendered and go_run() died on a null before it could submit anything.
+    my $shown_seqs = scalar @seq_sub;
 
     $template->param( MESSAGE   => $message );
     $template->param( SEQ_SUB   => $seq_submission );
     $template->param( HSP_COLOR => $hsp_colors );
-    $template->param( GO_RUN    => gen_go_run($num_seqs) );
+    $template->param( GO_RUN    => gen_go_run($shown_seqs) );
     $template->param( OPTIONS            => 1 );
     $template->param( ALIGNMENT_PROGRAMS => algorithm_list($prog) );
-    $template->param( SAVE_SETTINGS      => gen_save_settings($num_seqs) )
+    $template->param( SAVE_SETTINGS      => gen_save_settings($shown_seqs) )
       unless !$USER || $USER->user_name =~ /public/i;
     $template->param( 'TEMPDIR' => $TEMPDIR );
 
@@ -3563,7 +3595,8 @@ sub generate_annotation {
 }
 
 sub gen_params {
-    my $num_seqs = shift || $NUM_SEQS;
+    my $num_seqs = shift;
+    $num_seqs = $NUM_SEQS unless defined $num_seqs;
 
     my $params;
     for ( my $i = 1 ; $i <= $num_seqs ; $i++ ) {
@@ -3684,7 +3717,22 @@ qq{'args__rgb$i', 'args__'+\$('#sample_color$i').css('backgroundColor'),};
 }
 
 sub gen_go_run {
-    my $num_seqs = shift || $NUM_SEQS;
+    # `shift || $NUM_SEQS` would turn a legitimate 0 back into the default and
+    # regenerate JS for sequences that were never rendered.
+    my $num_seqs = shift;
+    $num_seqs = $NUM_SEQS unless defined $num_seqs;
+
+    # Under two usable sequences means the fields gen_params() refers to do not exist
+    # on the page. Say so rather than emitting JS that dies on a null dereference.
+    if ( $num_seqs < 2 ) {
+        return qq!
+<SCRIPT language="JavaScript">
+function go_run (){
+ alert_message("There are not enough sequences to compare -- see the message at the top of the page.");
+}
+</script>!;
+    }
+
     my $params   = gen_params($num_seqs);
     my $run      = qq!
 <SCRIPT language="JavaScript">
@@ -3702,7 +3750,10 @@ setTimeout(" monitor_log()", 5000);
 }
 
 sub gen_save_settings {
-    my $num_seqs      = shift || $NUM_SEQS;
+    my $num_seqs = shift;
+    $num_seqs = $NUM_SEQS unless defined $num_seqs;
+    # No sequence panels, nothing to save -- the template hides the button on ''.
+    return '' if $num_seqs < 2;
     my $params        = gen_params($num_seqs);
     my $save_settings = qq{save_settings_gevo([$params],[])};
     return $save_settings;
