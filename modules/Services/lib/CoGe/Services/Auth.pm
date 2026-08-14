@@ -1,6 +1,5 @@
 package CoGe::Services::Auth;
 
-use Mojo::UserAgent;
 use Data::Dumper;
 use URI::Escape::JavaScript qw(unescape);
 use JSON qw(decode_json);
@@ -17,7 +16,10 @@ sub init {
     return unless $self;
 #    print STDERR Dumper $self->req, "\n";
     my $username  = $self->param('username');
-    my $token     = $self->param('token');
+    # Agave path removed 2026-08-13: the `token` param used to be validated
+    # against the Agave/Tapis profiles API (validate_agave). Agave is retired
+    # and nothing calls it any more; CyVerse SSO now arrives via the OIDC
+    # browser flow (session cookie), and machine callers use the JWT headers.
     my $token2    = $self->req->headers->header('x-iplant-de-jwt'); # mdb added 9/23/15 for DE
     my $token3    = $self->req->headers->header('x-coge-jwt');      # mdb added 7/20/16 for private data requests from within CoGe
     my $remote_ip = $ENV{REMOTE_ADDR}; #$self->req->env->{HTTP_X_FORWARDED_FOR};
@@ -91,12 +93,9 @@ sub init {
     }
 
     # Otherwise, try to validate user token
-    if ($token || $token2 || $token3) {
+    if ($token2 || $token3) {
         my ($uname, $fname, $lname, $email);
-        if ($token) { # Agave
-            ($uname, $fname, $lname, $email) = validate_agave($username, $token);
-        }
-        elsif ($token2) { # DE JWT (RS256 against the DE RSA public key)
+        if ($token2) { # DE JWT (RS256 against the DE RSA public key)
             my $de_public_key_path = catfile($conf->{RESOURCEDIR}, $conf->{DE_PUBLIC_KEY});
             ($uname, $fname, $lname, $email) = validate_jwt($token2, $de_public_key_path, 'RS256');
         }
@@ -153,81 +152,5 @@ sub validate_jwt {
     return ($uname, $fname, $lname, $email);
 }
 
-sub validate_agave {
-    my ($username, $token) = @_;
-    return unless ($username and $token);
-#    print STDERR "CoGe::Services::Auth::validate_agave: username=$username token=$token\n";
-    
-    my ($uname, $fname, $lname, $email);
-
-    # Note: Mojolicious requires IO::Socket::SSL 1.75, do "cpan upgrade IO::Socket::SSL"
-    my $ua = Mojo::UserAgent->new;
-
-    # CAS Proxy - mdb added 7/20/15 for DE # replaced by JWT method
-#    if ($token_type eq 'cas') {
-#        # Get URL for CAS
-#        my $CAS_URL = get_defaults()->{CAS_URL};
-#        unless ($CAS_URL) {
-#            print STDERR "CoGe::Services::Auth::validate: missing CAS_URL\n";
-#            return;
-#        }
-#        
-#        # Validate proxy ticket and get user credentials
-#        $this_url =~ s/\?.+$//; # remove query params
-#        my $url = $CAS_URL.'/proxyValidate?service='.$this_url.'&ticket='.$token;
-#        my $res = $ua->get($url)->res;
-#        print STDERR Dumper $res, "\n";
-#        
-#        ($uname, $fname, $lname, $email) = parse_proxy_response($res->{content}{asset}{content});
-#        unless ($uname) {
-#            print STDERR 'CoGe::Services::Auth::validate_agave: CAS failed to authenticate, message=',
-#                ' url=', $url, "\n";
-#            return;
-#        }
-#    }
-
-    # Agave API (default) ------------------------------------------------------
-    
-    # Get URL for Agave User API endpoint
-    my $USER_API_URL = get_defaults()->{USER_API_URL};
-    unless ($USER_API_URL) {
-        print STDERR "CoGe::Services::Auth::validate_agave: missing USER_API_URL\n";
-        return;
-    }
-
-    # Validate token and get user credentials.  We lookup the 'me' profile 
-    # for the given token to verify that it belongs to given username.
-    # See http://developer.agaveapi.co/?shell#client-credentials
-    my $url = $USER_API_URL . '/me';
-    my $res = $ua->get($url, { Authorization => "Bearer $token" })->res;
-    unless ($res and $res->{message} eq 'OK') {
-        print STDERR 'CoGe::Services::Auth::validate: user agent error, message=',
-            ($res ? $res->{message} : 'undef'),
-            ' url=', $url, "\n";
-        print STDERR Dumper $res, "\n" if ($res);
-        return;
-    }
-    
-    # Extract user information and verify that the given username owns the given token
-    #print STDERR Dumper $res->body, "\n";
-    my $authResponse = decode_json($res->body);
-    unless ($authResponse && $authResponse->{status} =~ /success/i &&
-            $authResponse->{result} && $authResponse->{result}->{username} eq $username)
-    {
-        print STDERR 'CoGe::Services::Auth::validate_agave: Agave failed to authenticate, message=',
-            ($authResponse ? $authResponse->{message} : 'undef'),
-            ' url=', $url, "\n";
-        print STDERR Dumper $authResponse, "\n" if ($authResponse);
-        return;
-    }
-    
-    $uname = $authResponse->{result}->{username};
-    $fname = $authResponse->{result}->{firstName};
-    $lname = $authResponse->{result}->{lastName};
-    $email = $authResponse->{result}->{email};
-
-#    print STDERR "CoGe::Services::Auth::validate_agave: success! ", ($uname ? $uname : ''), "\n";
-    return ($uname, $fname, $lname, $email);
-}
 
 1;
