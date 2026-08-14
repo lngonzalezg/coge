@@ -482,6 +482,31 @@ sub logout_cas {
         $coge->resultset('UserSession')->search( { user_id => $user->id } )->delete_all;
     }
 
+    # OIDC-originated sessions (coge_am cookie set by login_oidc) log out at
+    # Keycloak instead of CAS. Both param spellings are sent because Keycloak
+    # changed the contract: modern versions want client_id +
+    # post_logout_redirect_uri, legacy ones validated redirect_uri against the
+    # login redirect list -- each ignores the other's parameter. The return
+    # target is SERVER (not the calling page) because it must fall inside the
+    # client's registered https://genomevolution.org/coge* wildcard.
+    my $am = $form->cookie('coge_am') // '';
+    my $oidc = ($am eq 'oidc') ? oidc_conf() : undef;
+    if ($oidc) {
+        my $server = get_defaults()->{SERVER} || '';
+        $server =~ s{/*$}{/};
+        my $u = URI->new($oidc->{logout_endpoint});
+        $u->query_form(
+            client_id                => $oidc->{client_id},
+            post_logout_redirect_uri => $server,
+            redirect_uri             => $server,
+        );
+        my $clear_am = CGI::Cookie->new(
+            -name => 'coge_am', -value => '', -path => '/', -expires => '-1d',
+        );
+        print $form->redirect( -uri => $u->as_string, -cookie => [$clear_am] );
+        return;
+    }
+
     print "Location: ", $form->redirect(get_defaults()->{CAS_URL} . "/logout?service=" . $url . "&gateway=1");
 }
 
@@ -497,13 +522,308 @@ sub gen_cookie {
     $params{ -values } = { session => $session } if $session;
     # Security pass 1 (W1): mark the session cookie HttpOnly (unreadable by JS, so an
     # XSS cannot steal it) and SameSite=Lax (not sent on cross-site requests, blunting
-    # CSRF). -secure is intentionally NOT set yet: this deployment publishes only :80
-    # (no TLS), so Secure would stop the cookie being sent and break login. Add
-    # -secure => 1 in the same change as the TLS work (C3).
+    # CSRF).
+    # 2026-08-13: -secure added -- the deferred half of W1. The site is now served
+    # exclusively over TLS (nginx on genomevolution.org terminates it; the plain-http
+    # hops behind it are loopback/bridge-internal, and browsers judge Secure by their
+    # own connection scheme, which is https).
     $params{ -httponly } = 1;
     $params{ -samesite } = 'Lax';
+    $params{ -secure }   = 1;
     my $c = new CGI::Cookie(%params);
     return $c;
+}
+
+###############################################################################
+# OIDC login (CyVerse Keycloak) -- runs ALONGSIDE the CAS flow, not replacing
+# it. The header's "Log in" button defaults to this flow, with "Log in with
+# CAS" as the dropdown alternative. Both converge on the same add_user /
+# user_session / cogec-cookie machinery, so one person logging in via either
+# IdP lands on the same account (identity is keyed on the username claim,
+# which CyVerse keeps identical between CAS and Keycloak).
+#
+#   web/oidc_login.pl     -> oidc_begin()  builds the authorize redirect
+#   web/oidc_callback.pl  -> login_oidc()  exchanges the code, mints session
+#
+# Config keys (coge.conf):
+#   OIDC_ISSUER         https://kc.cyverse.org/auth/realms/CyVerse
+#   OIDC_CLIENT_ID      coge
+#   OIDC_CLIENT_SECRET  CyVerse_secret.txt   (filename under resources/, same
+#                       pattern as JWT_COGE_SECRET; absolute paths also work)
+# With any of them missing oidc_conf() returns undef and oidc_login.pl falls
+# back to the CAS redirect, so deploying this code with the keys unset is a
+# zero-behavior-change deploy.
+###############################################################################
+
+sub oidc_conf {
+    my $conf = get_defaults();
+    my $issuer     = $conf->{OIDC_ISSUER};
+    my $client_id  = $conf->{OIDC_CLIENT_ID};
+    my $secret_ref = $conf->{OIDC_CLIENT_SECRET};
+    return unless $issuer && $client_id && $secret_ref;
+    $issuer =~ s{/+$}{};
+
+    my $secret_path = ($secret_ref =~ m{/}) ? $secret_ref
+                    : catfile($conf->{RESOURCEDIR}, $secret_ref);
+    my $secret = eval { read_file($secret_path) };
+    unless (defined $secret) {
+        print STDERR "Web::oidc_conf ERROR: cannot read client secret file '$secret_path'\n";
+        return;
+    }
+    $secret =~ s/^\s+|\s+$//g;
+    return unless length $secret;
+
+    my $server = $conf->{SERVER} || '';
+    $server =~ s{/*$}{/};
+    return {
+        issuer          => $issuer,
+        client_id       => $client_id,
+        client_secret   => $secret,
+        auth_endpoint   => $issuer . '/protocol/openid-connect/auth',
+        token_endpoint  => $issuer . '/protocol/openid-connect/token',
+        logout_endpoint => $issuer . '/protocol/openid-connect/logout',
+        # Must byte-match between the authorize request and the token exchange.
+        # The registered client accepts https://genomevolution.org/coge* (verified
+        # 2026-08-13 by probing the authorize endpoint with candidate URIs), so this
+        # dedicated callback needs no Keycloak client change.
+        redirect_uri    => $server . 'oidc_callback.pl',
+    };
+}
+
+# HMAC key for the state cookie: the CoGe-internal JWT secret. Deliberately NOT
+# the OIDC client secret -- that one is only ever sent to the token endpoint.
+sub _oidc_hmac_secret {
+    my $conf = get_defaults();
+    return unless $conf->{JWT_COGE_SECRET};
+    my $path = catfile($conf->{RESOURCEDIR}, $conf->{JWT_COGE_SECRET});
+    my $secret = eval { read_file($path) };
+    return unless defined $secret;
+    $secret =~ s/^\s+|\s+$//g;
+    return length($secret) ? $secret : undef;
+}
+
+# The realm's RSA signing key, cached as a PEM file so it can feed straight into
+# jwt_decode_token (which wants a key file path). Source is the legacy realm
+# endpoint (GET <issuer> returns JSON with a base64-DER `public_key` field) --
+# simpler than JWKS and verified present on kc.cyverse.org. Cache TTL 12h;
+# login_oidc() forces a refetch and retries once on verification failure, which
+# is what rides through a realm key rotation.
+sub oidc_realm_key_path {
+    my $force = shift;
+    my $o = oidc_conf() or return;
+    my $cache = '/tmp/coge_oidc_realm_key.pem';
+
+    if ($force or !-s $cache or (time - (stat($cache))[9]) > 12 * 3600) {
+        my $ua = LWP::UserAgent->new(timeout => 10);
+        my $resp = $ua->get($o->{issuer});
+        unless ($resp->is_success) {
+            print STDERR "Web::oidc_realm_key_path ERROR: realm fetch failed: ", $resp->status_line, "\n";
+            return (-s $cache) ? $cache : undef; # stale cache beats nothing
+        }
+        my $data = eval { decode_json($resp->decoded_content) };
+        my $b64 = $data && $data->{public_key};
+        unless ($b64) {
+            print STDERR "Web::oidc_realm_key_path ERROR: no public_key in realm response\n";
+            return (-s $cache) ? $cache : undef;
+        }
+        my $pem = "-----BEGIN PUBLIC KEY-----\n"
+                . join("\n", ($b64 =~ /(.{1,64})/g))
+                . "\n-----END PUBLIC KEY-----\n";
+        # Atomic replace: several Apache children may refresh concurrently.
+        my $tmp = "$cache.$$";
+        if (open(my $fh, '>', $tmp)) {
+            print $fh $pem;
+            close $fh;
+            rename($tmp, $cache) or unlink $tmp;
+        }
+    }
+    return (-s $cache) ? $cache : undef;
+}
+
+# Start the flow: mint state/nonce/PKCE, bind them (plus the relative return
+# URL) into an HMAC-signed short-lived cookie, and build the authorize URL.
+# Returns ($cookie, $authorize_url) or () if OIDC is not configured.
+sub oidc_begin {
+    my %opts = @_;
+    my $o   = oidc_conf()         or return;
+    my $key = _oidc_hmac_secret() or do {
+        print STDERR "Web::oidc_begin ERROR: JWT_COGE_SECRET unavailable for state signing\n";
+        return;
+    };
+
+    my $state = generate_session_id();
+    my $nonce = generate_session_id();
+    # PKCE verifier: RFC 7636 wants 43-128 chars of the base64url alphabet;
+    # two session ids give exactly 44.
+    my $verifier  = generate_session_id() . generate_session_id();
+    my $challenge = MIME::Base64::encode_base64url(Digest::SHA::sha256($verifier));
+
+    # Store the return target RELATIVE to SERVER (same trick as tiny_link):
+    # an off-site return URL becomes unrepresentable, so the callback cannot be
+    # turned into an open redirect.
+    my $rel = tiny_link_relative_url($opts{return_to}) // '';
+    $rel = '' if $rel =~ /^oidc_/; # never bounce back into the auth endpoints
+
+    my $payload = MIME::Base64::encode_base64url(encode_json({
+        s => $state, n => $nonce, v => $verifier, r => $rel, t => time,
+    }));
+    my $mac = Digest::SHA::hmac_sha256_hex($payload, $key);
+
+    my $cookie = CGI::Cookie->new(
+        -name     => 'coge_oidc',
+        -value    => "$payload.$mac",
+        -path     => '/',
+        -expires  => '+15m',
+        -httponly => 1,
+        -samesite => 'Lax', # still sent on the top-level GET back from Keycloak
+        -secure   => 1,
+    );
+
+    my $u = URI->new($o->{auth_endpoint});
+    $u->query_form(
+        response_type         => 'code',
+        client_id             => $o->{client_id},
+        redirect_uri          => $o->{redirect_uri},
+        scope                 => 'openid profile email',
+        state                 => $state,
+        nonce                 => $nonce,
+        code_challenge        => $challenge,
+        code_challenge_method => 'S256',
+    );
+    return ($cookie, $u->as_string);
+}
+
+# Verify and unpack the state cookie. Returns the payload hashref or undef.
+sub _oidc_state_check {
+    my $cgi = shift;
+    my $key = _oidc_hmac_secret() or return;
+    my $raw = $cgi->cookie('coge_oidc') or return;
+    my ($payload, $mac) = split(/\./, $raw, 2);
+    return unless $payload && $mac;
+    my $expect = Digest::SHA::hmac_sha256_hex($payload, $key);
+    return unless length($mac) == length($expect);
+    my $diff = 0;
+    $diff |= ord(substr($mac, $_, 1)) ^ ord(substr($expect, $_, 1))
+        for 0 .. length($expect) - 1;
+    return if $diff;
+    my $data = eval { decode_json(MIME::Base64::decode_base64url($payload)) };
+    return unless $data && $data->{s} && $data->{n} && $data->{v};
+    return if !$data->{t} || (time - $data->{t}) > 900; # same 15m as the cookie
+    return $data;
+}
+
+# Complete the flow: validate state, exchange the code, verify the ID token,
+# provision/find the user, mint the CoGe session. Structured like
+# login_cas_saml but returns instead of printing, so the callback CGI controls
+# the redirect. Returns a hashref { user, cookies => [...], redirect => url }
+# on success, or { error => '...' }.
+sub login_oidc {
+    my %opts = @_;
+    my $cgi   = $opts{cgi};
+    my $db    = $opts{coge};
+    my $code  = $opts{code};
+    my $state = $opts{state};
+
+    my $o = oidc_conf() or return { error => 'OIDC is not configured' };
+    my $conf = get_defaults();
+
+    my $st = _oidc_state_check($cgi)
+        or return { error => 'login state missing or expired -- please try signing in again' };
+    return { error => 'state mismatch' }
+        unless defined $state && $state eq $st->{s};
+    return { error => 'missing authorization code' } unless $code;
+
+    # Exchange the code -- server-to-server; the client secret never leaves here.
+    my $ua = LWP::UserAgent->new(timeout => 15);
+    my $resp = $ua->post($o->{token_endpoint}, {
+        grant_type    => 'authorization_code',
+        code          => $code,
+        redirect_uri  => $o->{redirect_uri},
+        client_id     => $o->{client_id},
+        client_secret => $o->{client_secret},
+        code_verifier => $st->{v},
+    });
+    unless ($resp->is_success) {
+        print STDERR "Web::login_oidc ERROR: token exchange failed: ",
+            $resp->status_line, ' ', substr($resp->decoded_content // '', 0, 300), "\n";
+        return { error => 'token exchange with CyVerse failed' };
+    }
+    my $tok = eval { decode_json($resp->decoded_content) };
+    my $id_token = $tok && $tok->{id_token}
+        or return { error => 'no id_token in token response' };
+
+    # Signature/alg/exp via the existing pinned-alg verifier, against the realm
+    # key; one forced-refresh retry rides through key rotation.
+    my $claims;
+    for my $force (0, 1) {
+        my $key_path = oidc_realm_key_path($force) or next;
+        $claims = jwt_decode_token($id_token, $key_path, 'RS256');
+        last if $claims;
+    }
+    unless ($claims) {
+        # Diagnostic (safe): the JOSE header is public material -- alg/kid/typ,
+        # no claims. Logged with the JWKS kids so a signed-by-unknown-key
+        # situation (key rotation mid-flight, or a cluster node signing with a
+        # key absent from the published set) is visible from the log alone.
+        my ($h64) = split(/\./, $id_token, 2);
+        my $hdr = eval { decode_json(MIME::Base64::decode_base64url($h64)) };
+        print STDERR 'Web::login_oidc DIAG: id_token header: ',
+            ($hdr ? encode_json($hdr) : 'unparseable'), "\n";
+        my $jwks = eval {
+            my $r = LWP::UserAgent->new(timeout => 10)->get($o->{issuer} . '/protocol/openid-connect/certs');
+            decode_json($r->decoded_content);
+        };
+        print STDERR 'Web::login_oidc DIAG: JWKS kids: ',
+            ($jwks ? join(',', map { ($_->{kid} // '?') . '/' . ($_->{use} // '?') } @{$jwks->{keys}}) : 'fetch failed'), "\n";
+        # If the kid above IS in the JWKS and this still fails, suspect the
+        # Crypt::OpenSSL::RSA build before suspecting the IdP: the cpanm --force
+        # copy shipped in images before 2026-08-13 produced/verified malformed
+        # PKCS#1 signatures against OpenSSL 3 (self-tests pass; interop fails).
+        # The Dockerfile now pins the vendor deb -- see the comment there.
+        return { error => 'ID token validation failed' };
+    }
+
+    # OIDC-specific claim checks on top of jwt_decode_token's alg/exp/signature.
+    return { error => 'issuer mismatch' }
+        unless ($claims->{iss} // '') eq $o->{issuer};
+    my @aud = ref($claims->{aud}) eq 'ARRAY' ? @{$claims->{aud}}
+            : defined($claims->{aud}) ? ($claims->{aud}) : ();
+    return { error => 'audience mismatch' }
+        unless grep { $_ eq $o->{client_id} } @aud;
+    return { error => 'nonce mismatch' }
+        unless ($claims->{nonce} // '') eq $st->{n};
+
+    my $uname = $claims->{preferred_username} // $claims->{sub};
+    return { error => 'no username claim in ID token' } unless $uname;
+
+    # Same provisioning + session as CAS: same claims map onto the same user row.
+    my $user = add_user($db, $uname, $claims->{given_name}, $claims->{family_name}, $claims->{email});
+    return { error => 'user provisioning failed' } unless $user;
+
+    my $session_id = generate_session_id();
+    $db->log_user( user => $user, session => $session_id );
+
+    my $session_cookie = gen_cookie(
+        session     => $session_id,
+        cookie_name => $conf->{COOKIE_NAME},
+    );
+    # Records which IdP this session came from so logout_cas can end the right
+    # SSO session. Absent (pre-existing CAS sessions) means CAS.
+    my $am_cookie = CGI::Cookie->new(
+        -name => 'coge_am', -value => 'oidc', -path => '/',
+        -expires => '+7d', -httponly => 1, -samesite => 'Lax', -secure => 1,
+    );
+    my $clear_state = CGI::Cookie->new(
+        -name => 'coge_oidc', -value => '', -path => '/', -expires => '-1d',
+    );
+
+    my $server = $conf->{SERVER} || '';
+    $server =~ s{/*$}{/};
+    return {
+        user     => $user,
+        cookies  => [ $session_cookie, $am_cookie, $clear_state ],
+        redirect => $server . ($st->{r} // ''),
+    };
 }
 
 sub login_cas_proxy {

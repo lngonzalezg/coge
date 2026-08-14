@@ -119,7 +119,7 @@ jQuery(document).ready(function(){
     if (coge.logout) { // coge.logout module will not be present if in embedded mode
         coge.logout.init({
             loginCookieName: '<TMPL_VAR NAME="COOKIE_NAME">', // should be set by page to enable logout detection
-            loginCallback: login_cas
+            loginCallback: login_oidc // default flow; falls back to CAS server-side if OIDC unconfigured
         });
     }
 
@@ -326,6 +326,7 @@ function hideDropdowns() {
 	hideDropdown('#help_drop');
 	hideDropdown('#tool_drop');
 	hideDropdown('#user_drop');
+	hideDropdown('#auth_drop');
 	hideDropdown('#advanced_search');
 	$('#coge-advanced-search').hide();
 }
@@ -505,8 +506,17 @@ function hideDropdowns() {
             </ul>
         </li>
 <TMPL_ELSE>
-		<li id="header_login_button" class="coge-header-button" onclick="login_cas();return true;">
-			<div>Log in</div>
+		<!-- Dual login (2026-08-13): clicking the label starts the default
+		     CyVerse Keycloak (OIDC) flow; hovering opens the menu with the CAS
+		     alternative, kept while both IdPs are alive. The label id MUST be
+		     auth_drop_label: the hover handler derives the panel id from the
+		     label id's first 4 chars (id.slice(0,4) + '_drop' -> #auth_drop),
+		     and hideDropdowns() below lists #auth_drop explicitly. -->
+		<li id="auth" class="dropdown coge-header-button noselect">
+			<div id="auth_drop_label" class="dropdown-label" onclick="login_oidc();return true;">Log in <img class="dropdown-arrow" src="picts/arrow-right-icon.png" class="link"></div>
+			<ul id="auth_drop" class="dropdown-menu hidden">
+				<li class="dropdown-item"><a class="dropdown-link" onclick="login_cas();return true;">Log in with CAS</a></li>
+			</ul>
 		</li>
 </TMPL_IF>
 	</ul>

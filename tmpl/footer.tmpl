@@ -33,8 +33,21 @@
 	    var location = document.location.href;
 	    location = location.replace(/&?ticket=([^&]$|[^&]*)/i, ""); // remove existing ticket param -- mdb added 9/7/16 COGE-724
 		var redirect_url = '<TMPL_VAR NAME=CAS_URL>' + '/login?service=' + location; // mdb added 3/25/15 for cas update
-		document.location.href = redirect_url; 
+		document.location.href = redirect_url;
 		return true;
+	}
+
+	// Default login: CyVerse Keycloak (OIDC), via the server-side starter.
+	// oidc_login.pl mints state/nonce/PKCE and redirects to Keycloak -- or
+	// falls back to CAS when OIDC is not configured, so this is always safe
+	// to call. Relative href works because every page lives under /coge/.
+	// Strips any leftover auth params (CAS ticket or OIDC callback residue)
+	// before capturing the return URL.
+	function login_oidc() {
+	    var loc = document.location.href
+	        .replace(/[?&](ticket|code|state|session_state|iss)=[^&]*/gi, '');
+	    document.location.href = 'oidc_login.pl?return_to=' + encodeURIComponent(loc);
+	    return true;
 	}
 
     $(document).ready(function(){
