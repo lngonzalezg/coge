@@ -11,7 +11,7 @@ use Data::Dumper;
 
 sub list {
     my $self = shift;
-    my $path = $self->stash('path');
+    my $path = $self->stash('irods_path');
     #print STDERR "IRODS::list ", $path, "\n";
 
     # Authenticate user and connect to the database

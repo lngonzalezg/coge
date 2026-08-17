@@ -410,7 +410,7 @@ $r->get("/irods/list/")
     ->name("irods-list")
     ->to("IRODS#list");
     
-$r->get("/irods/list/(*path)")
+$r->get("/irods/list/*irods_path")
     ->name("irods-list")
     ->to("IRODS#list");
 
