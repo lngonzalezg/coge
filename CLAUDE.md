@@ -102,5 +102,5 @@ A page like `web/SynMap.pl` follows a fixed shape: `CoGe::Accessory::Web->init(c
 - `bin/` — bundled third-party binaries and wrappers invoked by pipeline tasks (dagchainer, lagan, blastz, quota-alignment, Tabix, codeml…). Paths to them come from config keys, not from hardcoded relative paths.
 - `scripts/` — production scripts called from Apache/JEX, cron jobs, and manual utilities, mixed together; `scripts/README` says which subdirectories are live and which are obsolete (`scripts/old/` is dead).
 - `old/` — retired pages and templates kept for reference; do not extend them.
-- `web/js/jbrowse/` — JBrowse install (gitignored except the `plugins/CoGe` git submodule from `LyonsLab/CoGe_plugin`).
+- `web/js/jbrowse/` — JBrowse install (gitignored except `plugins/CoGe`, vendored directly since 2026-08-18 — it was a submodule of the now-dead `LyonsLab/CoGe_plugin`).
 - `web/services/jex.py` — small Python WSGI shim that proxies JBrowse/job-status requests to JEX.
