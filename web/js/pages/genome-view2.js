@@ -68,6 +68,16 @@
                     fastaLocation: { uri: API + 'genomes/' + gid + '/files/fasta', locationType: 'UriLocation' },
                     faiLocation:   { uri: API + 'genomes/' + gid + '/files/fai',   locationType: 'UriLocation' }
                 }
+            },
+            // CoGe FASTAs carry NCBI-style prefixed names (lcl|LL0249_Chr01)
+            // while loaded GFFs use bare names -- disjoint refName sets make
+            // annotation tracks silently render nothing. The gateway derives
+            // this aliases file from the .fai on the fly.
+            refNameAliases: {
+                adapter: {
+                    type: 'RefNameAliasAdapter',
+                    location: { uri: API + 'genomes/' + gid + '/files/aliases', locationType: 'UriLocation' }
+                }
             }
         };
 
@@ -105,7 +115,15 @@
             tracks: tracks,
             location: location
         });
-        tracks.forEach(function (t) { state.session.view.showTrack(t.trackId); });
+        // Show the reference sequence and every renderable annotation track by
+        // default -- an empty view with a hidden track selector is a bad first
+        // impression. Individually guarded: one bad track config should not
+        // take down the rest of the view.
+        [assemblyName + '-seq'].concat(tracks.map(function (t) { return t.trackId; }))
+            .forEach(function (id) {
+                try { state.session.view.showTrack(id); }
+                catch (e) { console.error('GenomeView2: showTrack(' + id + '): ' + e.message); }
+            });
 
         var root = ReactDOM.createRoot(document.getElementById('jbrowse2_view'));
         root.render(React.createElement(JB.JBrowseLinearGenomeView, { viewState: state }));

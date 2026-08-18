@@ -55,8 +55,9 @@ sub genome_file {
     my $gid  = $self->stash('gid');
     my $kind = $self->stash('kind');
 
-    my $fname = $GENOME_KINDS{$kind // ''}
-        or return $self->render(API_STATUS_NOTFOUND);
+    my $is_aliases = ($kind // '') eq 'aliases';
+    my $fname = $GENOME_KINDS{$kind // ''};
+    return $self->render(API_STATUS_NOTFOUND) unless $fname or $is_aliases;
 
     my ($db, $user) = CoGe::Services::Auth::init($self);
     return $self->render(API_STATUS_CUSTOM(500, 'database unavailable')) unless $db;
@@ -72,6 +73,31 @@ sub genome_file {
 
     my $dir = get_genome_path($genome->id)
         or return $self->render(API_STATUS_NOTFOUND);
+
+    # kind=aliases: a refName-aliases file for JBrowse2's RefNameAliasAdapter,
+    # generated from the .fai rather than stored. CoGe FASTAs carry NCBI-style
+    # prefixed sequence names (e.g. "lcl|LL0249_Chr01") while the loaded GFFs
+    # use the bare names -- disjoint refName sets, so annotation tracks
+    # silently render nothing without aliasing. Format: canonical name (as in
+    # the FASTA) TAB alias. Only prefixed names emit a line.
+    if ($is_aliases) {
+        my $fai = catfile($dir, $GENOME_KINDS{fai});
+        return $self->render(API_STATUS_NOTFOUND) unless -f $fai;
+        open(my $fh, '<', $fai)
+            or return $self->render(API_STATUS_CUSTOM(500, 'cannot read fai'));
+        my $out = '';
+        while (my $line = <$fh>) {
+            my ($name) = split(/\t/, $line, 2);
+            next unless defined $name and $name =~ /\|/;
+            my ($bare) = $name =~ /\|([^|]+)$/;
+            $out .= "$name\t$bare\n" if $bare;
+        }
+        close $fh;
+        $self->res->headers->cache_control(
+            $genome->restricted ? 'private, max-age=3600' : 'public, max-age=86400' );
+        return $self->render( text => $out, format => 'txt' );
+    }
+
     return $self->_serve( catfile($dir, $fname), $genome->restricted );
 }
 
@@ -89,18 +115,32 @@ sub dataset_file {
     my $ds = $db->resultset('Dataset')->find($id);
     return $self->render(API_STATUS_NOTFOUND) if !$ds or $ds->deleted;
 
-    # NB: has_access_to_dataset does NOT grant public datasets (its
-    # !restricted short-circuit is commented out upstream) -- callers must
-    # test the flag themselves, which is exactly what the web UI does.
-    if ( $ds->restricted
-        and ( not defined $user or not $user->has_access_to_dataset($ds) ) )
-    {
-        return $self->render(API_STATUS_UNAUTHORIZED);
+    # Access rides on the dataset's GENOMES, not the dataset's own restricted
+    # flag. Per-dataset enforcement shipped and was REVERTED the same day
+    # (2026-08-18): dataset.restricted has never been enforced anywhere in
+    # CoGe -- has_access_to_dataset's public short-circuit is commented out
+    # upstream and the JBrowse1 layer gates on the genome -- so the flags were
+    # never curated. 1,568 live datasets on PUBLIC genomes carry restricted=1
+    # as load-wizard defaults, and enforcing the flag hid their tracks from
+    # everyone but their owners. Effective CoGe semantics, kept here: a
+    # dataset is visible iff some genome it belongs to is visible.
+    my ($allowed, $public) = (0, 0);
+    for my $genome ( $ds->genomes ) {
+        next if $genome->deleted;
+        if ( !$genome->restricted ) {
+            $allowed = 1;
+            $public  = 1;
+        }
+        elsif ( defined $user and $user->has_access_to_genome($genome) ) {
+            $allowed = 1;
+        }
     }
+    $allowed = 1 if defined $user and $user->is_admin;
+    return $self->render(API_STATUS_UNAUTHORIZED) unless $allowed;
 
     my $dir = get_dataset_source_path($ds->id)
         or return $self->render(API_STATUS_NOTFOUND);
-    return $self->_serve( catfile($dir, $ds->name . $suffix), $ds->restricted );
+    return $self->_serve( catfile($dir, $ds->name . $suffix), !$public );
 }
 
 # List the datasets of a genome that THIS requester may know about, plus
@@ -129,24 +169,13 @@ sub genome_datasets {
         return $self->render(API_STATUS_UNAUTHORIZED);
     }
 
-    # Accessible-dataset set computed once (same reasoning as track_config:
-    # has_access_to_dataset is uncached and quadratic in a loop).
-    my %ds_visible;
-    if ($user) {
-        if ($user->is_admin) {
-            $ds_visible{$_->id} = 1 for $genome->datasets;
-        }
-        else {
-            for my $g ($user->genomes(include_deleted => 1)) {
-                $ds_visible{$_->id} = 1 for $g->datasets;
-            }
-        }
-    }
-
+    # No per-dataset filter, deliberately (2026-08-18 revert): genome access
+    # gates everything, matching JBrowse1 -- dataset.restricted was never
+    # enforced in CoGe and 1,568 datasets on public genomes carry it as an
+    # uncurated load-wizard default. The flag is still REPORTED per dataset.
     my @datasets;
     for my $ds ( sort { $a->name cmp $b->name } $genome->datasets ) {
         next if $ds->deleted;
-        next if $ds->restricted and not $ds_visible{$ds->id};
         my $dir = get_dataset_source_path($ds->id);
         my %files;
         for my $kind (keys %DATASET_KINDS) {
