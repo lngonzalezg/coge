@@ -7,6 +7,7 @@ use Getopt::Long;
 use File::Path;
 use File::Basename;
 use File::Copy qw(copy);
+use String::ShellQuote qw(shell_quote);
 use File::Spec::Functions qw( catdir catfile );
 use File::Touch;
 use URI::Escape;
@@ -508,6 +509,34 @@ if ($preserve_dir) {
     mkpath($preserve_dir) unless -d $preserve_dir;
     unless (-d $preserve_dir and copy($data_file, $preserve_file)) {
         print STDOUT "log: error: could not preserve annotation file to '$preserve_file': $!\n";
+        exit(-1);
+    }
+
+    # Alongside the original, emit the random-access form JBrowse2's
+    # Gff3TabixAdapter wants: coordinate-sorted, bgzipped, CSI-indexed.
+    # Naming is mechanical so it stays computable from the dataset row:
+    #   <name>            the file as uploaded (parsed form)
+    #   <name>.sorted.gz  bgzip of the coordinate-sorted GFF
+    #   <name>.sorted.gz.csi
+    # CSI rather than TBI on purpose: TBI cannot index sequences longer than
+    # 2^29-1 (~536 Mb) and CoGe hosts plant genomes whose single chromosomes
+    # exceed that; JBrowse2 reads CSI (indexType 'CSI' in the adapter config).
+    # Sort keys: seqid, then numeric start -- GFF columns 1-8 are
+    # whitespace-free per spec, so tab separation is belt-and-braces. Headers
+    # are kept in front of the stream; pipefail is safe because a successfully
+    # loaded annotation always has at least one feature line for the second
+    # grep. sort spills to the staging dir, not /tmp, for big files.
+    my $sorted_file = $preserve_file . '.sorted.gz';
+    my $q_src = shell_quote($preserve_file);
+    my $q_out = shell_quote($sorted_file);
+    my $q_tmp = shell_quote($staging_dir);
+    my $index_cmd = "set -o pipefail; "
+        . "(grep '^#' $q_src; grep -v '^#' $q_src | LC_ALL=C sort -T $q_tmp -t \$'\\t' -k1,1 -k4,4n) "
+        . "| bgzip -c > $q_out && tabix -C -p gff $q_out";
+    print STDOUT "log: Indexing annotation (bgzip + CSI) for JBrowse2\n";
+    my $rc = system('/bin/bash', '-c', $index_cmd);
+    unless ($rc == 0 and -s $sorted_file and -s "$sorted_file.csi") {
+        print STDOUT "log: error: could not bgzip/index annotation file '$preserve_file' (rc=$rc)\n";
         exit(-1);
     }
 }
