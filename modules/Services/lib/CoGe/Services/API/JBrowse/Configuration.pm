@@ -252,8 +252,30 @@ sub track_config {
     #
     # Add a feature group for each dataset
     #
-    if ( @{$genome->datasets} > 1) {
-        foreach my $ds ( sort { $a->name cmp $b->name } $genome->datasets ) {
+    # Per-dataset visibility (2026-08-18): a dataset carries its own restricted
+    # flag -- e.g. a private annotation loaded onto a public genome -- but this
+    # listing only ever gated on the GENOME, leaking restricted datasets' names
+    # and track config to anyone who could see the genome. Filter with the same
+    # semantics as User::has_access_to_dataset (admin sees all; otherwise access
+    # comes via the user's genomes), but computed ONCE up front:
+    # has_access_to_dataset walks user->genomes x datasets per call and has no
+    # cache, which is quadratic inside this loop.
+    my @all_datasets = $genome->datasets;
+    my %ds_visible;
+    if ($user) {
+        if ($user->is_admin) {
+            $ds_visible{$_->id} = 1 for @all_datasets;
+        }
+        else {
+            for my $g ($user->genomes(include_deleted => 1)) {
+                $ds_visible{$_->id} = 1 for $g->datasets;
+            }
+        }
+    }
+    my @visible_datasets = grep { !$_->restricted or $ds_visible{$_->id} } @all_datasets;
+
+    if ( @visible_datasets > 1) {
+        foreach my $ds ( sort { $a->name cmp $b->name } @visible_datasets ) {
             @feat_type_names = grep( !/chromosome/, $ds->distinct_feature_type_names ); # exclude "chromosome" features
             if (@feat_type_names) {
                 my $dsid = $ds->id;

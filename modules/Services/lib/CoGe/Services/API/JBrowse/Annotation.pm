@@ -68,6 +68,27 @@ sub features {
         return;
     }
 
+    # Per-dataset access (2026-08-18): the per-dataset track URL
+    # (.../track/annotation/:gid/datasets/:dsid/...) only ever checked the
+    # GENOME above -- a restricted dataset's features were served to anyone
+    # who could see the genome (the data plane of the listing leak fixed in
+    # Configuration::track_config). Soft-fail with an empty feature set, this
+    # sub's style. KNOWN RESIDUAL: the genome-wide composite track (no dsid)
+    # still aggregates features across ALL the genome's datasets inside
+    # CoGeDBI::get_features_by_range; excluding restricted datasets there
+    # needs a dataset-id filter plumbed into that SQL.
+    if ($dsid) {
+        my $ds = $db->resultset('Dataset')->find($dsid);
+        if ( !$ds
+            or ( $ds->restricted
+                and ( not defined $user or not $user->has_access_to_dataset($ds) ) ) )
+        {
+            warn 'dataset access denied';
+            $self->render(json => { "features" => [] });
+            return;
+        }
+    }
+
     # Get features
     my $features = get_features_by_range(
         dbh => $db->storage->dbh, 

@@ -141,6 +141,18 @@ $r->get("/links")
     ->name("tiny-link-create")
     ->to("link#create", namespace => 'CoGe::Services::API');
 
+# Authenticated file gateway (JBrowse2 Phase A) -- serves preserved genome and
+# dataset artifacts through the same access checks as the web UI. New routes,
+# parallel to the JBrowse1 endpoints; see CoGe::Services::API::DataFiles for
+# the design (kind allowlist, FILE_STORE driver seam, Range/206 semantics).
+$r->get("/genomes/:gid/files/:kind" => [gid => qr/\d+/])
+    ->name("genome-file")
+    ->to("DataFiles#genome_file", namespace => 'CoGe::Services::API');
+
+$r->get("/datasets/:id/files/:kind" => [id => qr/\d+/])
+    ->name("dataset-file")
+    ->to("DataFiles#dataset_file", namespace => 'CoGe::Services::API');
+
 # Global Search routes
 $r->get("/global/search/#term")
     ->name("global-search")
