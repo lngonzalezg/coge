@@ -37,7 +37,13 @@ sub refseq_config {
         and ( not defined $user or not $user->has_access_to_genome($genome) ) )
     {
       	print STDERR "JBrowse::Configuration::refseq_config access denied to genome $gid\n";
-       	return '{}';
+        # Render, don't just return: returning a string from a Mojolicious action
+        # renders NOTHING, so the request hung until the inactivity timeout and
+        # surfaced as a 502 -- and each anonymous request for a restricted
+        # genome's refseq pinned a worker slot for the duration, a free
+        # connection-exhaustion vector on a public site (found 2026-08-18).
+        $self->render(json => []);
+        return;
     }
 
     my @chromosomes;
