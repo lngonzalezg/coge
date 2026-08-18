@@ -103,6 +103,81 @@ sub dataset_file {
     return $self->_serve( catfile($dir, $ds->name . $suffix), $ds->restricted );
 }
 
+# List the datasets of a genome that THIS requester may know about, plus
+# which gateway files exist for each -- the single call the JBrowse2 page
+# builds its track config from (Phase B).
+#
+# Visibility is the same predicate set as the JBrowse1 track_config fix:
+# genome access gates the endpoint; per dataset, public OR accessible via the
+# user's genomes OR admin. Restricted datasets a user cannot access are
+# OMITTED entirely (existence and name are metadata worth protecting), and
+# this listing is convenience only -- the file endpoints above re-check
+# access on every fetch, so a leaked id never becomes leaked bytes.
+sub genome_datasets {
+    my $self = shift;
+    my $gid  = $self->stash('gid');
+
+    my ($db, $user) = CoGe::Services::Auth::init($self);
+    return $self->render(API_STATUS_CUSTOM(500, 'database unavailable')) unless $db;
+
+    my $genome = $db->resultset('Genome')->find($gid);
+    return $self->render(API_STATUS_NOTFOUND) if !$genome or $genome->deleted;
+
+    if ( $genome->restricted
+        and ( not defined $user or not $user->has_access_to_genome($genome) ) )
+    {
+        return $self->render(API_STATUS_UNAUTHORIZED);
+    }
+
+    # Accessible-dataset set computed once (same reasoning as track_config:
+    # has_access_to_dataset is uncached and quadratic in a loop).
+    my %ds_visible;
+    if ($user) {
+        if ($user->is_admin) {
+            $ds_visible{$_->id} = 1 for $genome->datasets;
+        }
+        else {
+            for my $g ($user->genomes(include_deleted => 1)) {
+                $ds_visible{$_->id} = 1 for $g->datasets;
+            }
+        }
+    }
+
+    my @datasets;
+    for my $ds ( sort { $a->name cmp $b->name } $genome->datasets ) {
+        next if $ds->deleted;
+        next if $ds->restricted and not $ds_visible{$ds->id};
+        my $dir = get_dataset_source_path($ds->id);
+        my %files;
+        for my $kind (keys %DATASET_KINDS) {
+            $files{$kind} = ($dir and -f catfile($dir, $ds->name . $DATASET_KINDS{$kind})) ? \1 : \0;
+        }
+        push @datasets, {
+            id         => int($ds->id),
+            name       => $ds->name,
+            version    => $ds->version,
+            restricted => $ds->restricted ? \1 : \0,
+            date       => '' . $ds->date,
+            files      => \%files,
+        };
+    }
+
+    # Genome block included so the page needs exactly one metadata fetch.
+    my $gdir = get_genome_path($genome->id);
+    $self->render(json => {
+        genome => {
+            id         => int($genome->id),
+            name       => $genome->info,
+            restricted => $genome->restricted ? \1 : \0,
+            files      => {
+                fasta => ($gdir and -f catfile($gdir, $GENOME_KINDS{fasta})) ? \1 : \0,
+                fai   => ($gdir and -f catfile($gdir, $GENOME_KINDS{fai}))   ? \1 : \0,
+            },
+        },
+        datasets => \@datasets,
+    });
+}
+
 # The driver seam. Everything above decides WHETHER; this decides HOW.
 sub _serve {
     my ($self, $path, $restricted) = @_;

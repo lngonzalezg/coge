@@ -153,6 +153,10 @@ $r->get("/datasets/:id/files/:kind" => [id => qr/\d+/])
     ->name("dataset-file")
     ->to("DataFiles#dataset_file", namespace => 'CoGe::Services::API');
 
+$r->get("/genomes/:gid/datasets" => [gid => qr/\d+/])
+    ->name("genome-datasets")
+    ->to("DataFiles#genome_datasets", namespace => 'CoGe::Services::API');
+
 # Global Search routes
 $r->get("/global/search/#term")
     ->name("global-search")
