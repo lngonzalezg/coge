@@ -7,8 +7,17 @@
      script-tag embedding style. Web workers come from blob: URLs, covered by
      the worker-src 'self' blob: CSP directive (added 2026-08-17). -->
 
+<style>
+  /* Full-viewport genome browser (2026-08-18). NO_BOX in GenomeView2.pl already
+     removes the page gutter; this stretches the view to the bottom of the
+     window. The LGV paints its natural height (sum of tracks) inside; the
+     min-height keeps the page from looking like a cramped strip. 120px
+     approximates the CoGe header; embeds (?embed=1) have no header, and the
+     rule errs generous rather than clipping. */
+  #jbrowse2_view { width: 100%; min-height: calc(100vh - 120px); }
+</style>
 <div id="jbrowse2_error" style="display:none;padding:1em;color:#a00;"></div>
-<div id="jbrowse2_view" style="width:100%;"></div>
+<div id="jbrowse2_view"></div>
 
 <script src="js/jbrowse2/react-18.3.1.min.js"></script>
 <script src="js/jbrowse2/react-dom-18.3.1.min.js"></script>

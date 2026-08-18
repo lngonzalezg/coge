@@ -51,6 +51,7 @@ sub gen_html {
             HELP          => 'GenomeView',
             WIKI_URL      => $CONF->{WIKI_URL} || '',
             ADMIN_ONLY    => $USER->is_admin,
+            NO_BOX        => 1, # full-viewport: skip the box wrapper's 24px gutter + 70px pad
             CAS_URL       => $CONF->{CAS_URL} || '',
             COOKIE_NAME   => $CONF->{COOKIE_NAME} || ''
         );
