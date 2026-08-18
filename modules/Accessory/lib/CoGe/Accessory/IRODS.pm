@@ -61,6 +61,7 @@ sub irods_ils {
     # string, so IPC::System::Simple ran it through /bin/sh and $path was injectable via
     # a literal quote. List-form capture bypasses the shell; env is localized.
     local $ENV{irodsEnvFile} = $env_file;
+    local $ENV{IRODS_ENVIRONMENT_FILE} = $env_file; # icommands 5.x ignore the legacy name
     my @ils = capture( EXIT_ANY, 'ils', '-l', $path );
     if ($EXITVAL) {
         return { error => "Error: ils rc=$EXITVAL" };
@@ -140,6 +141,7 @@ sub irods_chksum {
 
     # Security pass 1 (R4): shell-free; $path was unquoted in the old shell string.
     local $ENV{irodsEnvFile} = $env_file;
+    local $ENV{IRODS_ENVIRONMENT_FILE} = $env_file; # icommands 5.x ignore the legacy name
     my @output = capture( EXIT_ANY, 'ichksum', $path );
     my ($chksum) = $output[0] =~ /\s*\S+\s+(\S+)/;
 
@@ -166,10 +168,11 @@ sub irods_iget {
     # The no_execute string is spliced into a JEX shell command by callers, so
     # every interpolated value must be shell-quoted (§4.3.4 R4-completion).
     my @args = ( 'iget', '-fT', $src, $dest );
-    my $cmd = 'export irodsEnvFile=' . shell_quote($env_file) . ' && '
+    my $cmd = 'export IRODS_ENVIRONMENT_FILE=' . shell_quote($env_file) . ' && '
         . shell_quote(@args);
     return $cmd if $no_execute;
     local $ENV{irodsEnvFile} = $env_file;
+    local $ENV{IRODS_ENVIRONMENT_FILE} = $env_file; # icommands 5.x ignore the legacy name
     my @result = capture( EXIT_ANY, @args );
     #print STDERR "@result";
 
@@ -192,11 +195,12 @@ sub irods_iput {
     my @args = ( 'iput', '-T' );
     push @args, '-f' if $overwrite;
     push @args, $src, $dest;
-    my $cmd = 'export irodsEnvFile=' . shell_quote($env_file) . ' && '
+    my $cmd = 'export IRODS_ENVIRONMENT_FILE=' . shell_quote($env_file) . ' && '
         . shell_quote(@args);
 
     return $cmd if $no_execute;
     local $ENV{irodsEnvFile} = $env_file;
+    local $ENV{IRODS_ENVIRONMENT_FILE} = $env_file; # icommands 5.x ignore the legacy name
     my @result = capture( EXIT_ANY, @args );
     warn Dumper \@result;
 
@@ -220,6 +224,7 @@ sub irods_imeta_add {
 	    # Security pass 1 (R4): shell-free; $dest/$k/$v were single-quoted in a shell
 	    # string and breakable with a literal quote.
 	    local $ENV{irodsEnvFile} = $env_file;
+	    local $ENV{IRODS_ENVIRONMENT_FILE} = $env_file; # icommands 5.x ignore the legacy name
 	    my @result = capture( EXIT_ANY, 'imeta', 'add', '-d', $dest, $k, $v );
 	    #print STDERR "@result";
 	}
@@ -235,6 +240,7 @@ sub irods_imeta_ls {
 
     # Security pass 1 (R4): shell-free.
     local $ENV{irodsEnvFile} = $env_file;
+    local $ENV{IRODS_ENVIRONMENT_FILE} = $env_file; # icommands 5.x ignore the legacy name
     my @result = capture( EXIT_ANY, 'imeta', 'ls', '-d', $dest, $attribute );
 
     return \@result;
@@ -250,6 +256,7 @@ sub irods_imkdir {
     # Security pass 1 (R4): shell-free; $path was single-quoted and injectable. This is
     # the sink reachable from POST /irods/mkdir.
     local $ENV{irodsEnvFile} = $env_file;
+    local $ENV{IRODS_ENVIRONMENT_FILE} = $env_file; # icommands 5.x ignore the legacy name
     my @result = capture( EXIT_ANY, 'imkdir', '-p', $path );
     return $result[0] if scalar @result;
 }
@@ -263,6 +270,7 @@ sub irods_irm {
 
     # Security pass 1 (R4): shell-free; $path was single-quoted and injectable.
     local $ENV{irodsEnvFile} = $env_file;
+    local $ENV{IRODS_ENVIRONMENT_FILE} = $env_file; # icommands 5.x ignore the legacy name
     my @result = capture( EXIT_ANY, 'irm', '-rf', $path );
     return $result[0] if scalar @result;
 }

@@ -146,9 +146,22 @@ sub iget {
     my $cmd;
     # §4.3.4 shell-quote user-influenced paths spliced into this JEX command.
     $cmd .= "mkdir -p " . shell_quote($dest_path) . " && "; # mdb added 2/9/16 -- for hypnotoad
-    my $irodsEnvFile = catfile($self->conf->{_HOME_PATH}, 'irodsEnv');
-    irods_set_env($irodsEnvFile); # mdb added 2/9/16 -- for hypnotoad, use www-data's irodsEnvFile
-    $cmd .= irods_iget( $irods_path, $dest_path, { no_execute => 1 } ) . ' && ';
+    # The env file comes from IRODSENV in coge.conf (irods_environment.json for
+    # icommands 4+), falling back to the legacy "<home>/irodsEnv" only when the
+    # config key is absent. This used to hardcode the legacy name AND push it
+    # through irods_set_env, which outranks the config -- with the file long
+    # gone, irods_iget returned undef and an EMPTY command was spliced into the
+    # JEX shell line ("mkdir ... &&  && touch ..."), failing every iRODS-sourced
+    # genome load at the first task (workflow 25983, 2026-08-17).
+    my $irodsEnvFile = $self->conf->{IRODSENV}
+        // catfile($self->conf->{_HOME_PATH}, 'irodsEnv');
+    irods_set_env($irodsEnvFile); # still set: the package global persists per-process and may hold a stale value
+    my $iget_cmd = irods_iget( $irods_path, $dest_path, { no_execute => 1 } );
+    unless ($iget_cmd) {
+        # Fail at build time, visibly, rather than emitting a broken shell line.
+        die "iget: iRODS environment file missing or unreadable ($irodsEnvFile)\n";
+    }
+    $cmd .= $iget_cmd . ' && ';
     $cmd .= "touch " . shell_quote($done_file);
 
     return {
