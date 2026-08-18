@@ -92,7 +92,7 @@
                 tracks.push({
                     type: 'FeatureTrack',
                     trackId: 'dataset-' + ds.id,
-                    name: ds.name + (ds.restricted ? ' 🔒' : ''),
+                    name: ds.name + (ds.restricted ? ' (restricted)' : ''),
                     assemblyNames: [assemblyName],
                     adapter: {
                         type: 'Gff3TabixAdapter',
