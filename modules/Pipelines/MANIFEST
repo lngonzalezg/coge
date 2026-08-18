@@ -14,6 +14,7 @@ lib/CoGe/Builder/CommonTasks.pm
 lib/CoGe/Builder/Export/Experiment.pm
 lib/CoGe/Builder/Export/Fasta.pm
 lib/CoGe/Builder/Export/Gff.pm
+lib/CoGe/Builder/IndexAnnotation.pm
 lib/CoGe/Builder/Load/Annotation.pm
 lib/CoGe/Builder/Load/BatchExperiment.pm
 lib/CoGe/Builder/Load/Experiment.pm
@@ -44,6 +45,7 @@ lib/CoGe/Request/Experiment.pm
 lib/CoGe/Request/NExperiments.pm
 lib/CoGe/Request/ExperimentAnalysis.pm
 lib/CoGe/Request/Genome.pm
+lib/CoGe/Request/Dataset.pm
 lib/CoGe/Request/NGenomes.pm
 lib/CoGe/Request/TwoGenomes.pm
 lib/CoGe/Factory/RequestFactory.pm

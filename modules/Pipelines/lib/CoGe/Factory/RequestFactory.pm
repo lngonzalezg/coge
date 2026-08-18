@@ -31,6 +31,7 @@ has 'conf'    => (
 my %typeToClass = (
     'blast'                 => { class => 'CoGe::Request::CoGeBlast',          authRequired => 0 },
     'export_gff'            => { class => 'CoGe::Request::Genome',             authRequired => 0 },
+    'index_annotation'      => { class => 'CoGe::Request::Dataset',            authRequired => 1 }, # JBrowse2 legacy-dataset backfill (2026-08-18)
     'export_fasta'          => { class => 'CoGe::Request::Genome',             authRequired => 0 },
     'export_genome'         => { class => 'CoGe::Request::Genome',             authRequired => 0 },
     'export_experiment'     => { class => 'CoGe::Request::Experiment',         authRequired => 0 },

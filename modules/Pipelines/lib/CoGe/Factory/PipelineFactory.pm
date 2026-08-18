@@ -29,6 +29,7 @@ use CoGe::Exception::Generic;
 my %typeToClass = (
     'blast'                 => 'CoGe::Builder::Tools::CoGeBlast',
     'export_gff'            => 'CoGe::Builder::Export::Gff',
+    'index_annotation'      => 'CoGe::Builder::IndexAnnotation', # JBrowse2 legacy-dataset backfill (2026-08-18)
     'export_fasta'          => 'CoGe::Builder::Export::Fasta',
     'export_genome'         => 'CoGe::Builder::Export::Genome',
     'export_experiment'     => 'CoGe::Builder::Export::Experiment',

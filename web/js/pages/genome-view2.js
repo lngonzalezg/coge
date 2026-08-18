@@ -172,8 +172,73 @@
             }
             else skipped.push(ds.name);
         });
-        if (skipped.length)
+        // Datasets without preserved files (loaded before 2026-08-18) can be
+        // backfilled on demand: the button submits one index_annotation job
+        // per dataset (DB export -> bgzip -> CSI, server-side), polls the
+        // existing jobs API, and reloads when all land. Requires login
+        // (authRequired on the job type); anonymous users see the note only.
+        var backfillable = listing.datasets.filter(function (ds) {
+            return !(ds.files['gff-tabix'] && ds.files['gff-csi']);
+        });
+        if (backfillable.length) {
             console.log('GenomeView2: no preserved files yet (pre-2026 loads): ' + skipped.join(', '));
+            var bar = document.createElement('div');
+            bar.style.cssText = 'padding:6px 10px;font-size:12px;';
+            var btn = document.createElement('button');
+            btn.textContent = 'Visualize older annotations (' + backfillable.length + ')';
+            var note = document.createElement('span');
+            note.style.marginLeft = '10px';
+            bar.appendChild(btn); bar.appendChild(note);
+            var legendEl = document.getElementById('jbrowse2_legend');
+            legendEl.parentNode.insertBefore(bar, legendEl);
+
+            btn.onclick = function () {
+                btn.disabled = true;
+                note.textContent = 'Submitting...';
+                Promise.all(backfillable.map(function (ds) {
+                    return fetch(API + 'jobs/', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            type: 'index_annotation',
+                            requester: { page: 'GenomeView2' },
+                            parameters: { dsid: ds.id }
+                        })
+                    }).then(function (r) { return r.json(); });
+                })).then(function (subs) {
+                    var ids = subs.map(function (x) { return x.id; }).filter(Boolean);
+                    if (!ids.length) {
+                        note.textContent = 'Submission failed' +
+                            (subs[0] && subs[0].error ? ': ' + JSON.stringify(subs[0].error) : '') +
+                            ' (are you logged in?)';
+                        btn.disabled = false;
+                        return;
+                    }
+                    note.textContent = 'Indexing ' + ids.length + ' dataset(s)... the page will reload when done.';
+                    var pending = {};
+                    ids.forEach(function (id) { pending[id] = true; });
+                    var timer = setInterval(function () {
+                        Object.keys(pending).forEach(function (id) {
+                            fetch(API + 'jobs/' + id).then(function (r) { return r.json(); })
+                                .then(function (j) {
+                                    var st = j.status && j.status.toLowerCase();
+                                    if (st === 'completed' || st === 'failed' ||
+                                        st === 'error' || st === 'cancelled' ||
+                                        st === 'terminated' || st === 'stopped') {
+                                        delete pending[id];
+                                        if (st !== 'completed')
+                                            console.error('GenomeView2: backfill job ' + id + ' ' + st);
+                                    }
+                                    if (!Object.keys(pending).length) {
+                                        clearInterval(timer);
+                                        location.reload();
+                                    }
+                                });
+                        });
+                    }, 3000);
+                });
+            };
+        }
 
         var JB = window.JBrowseReactLinearGenomeView;
         var state = JB.createViewState({
