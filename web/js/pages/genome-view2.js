@@ -118,6 +118,32 @@
         var colorJexl = 'jexl:' + Object.keys(TYPE_COLORS).map(function (t) {
             return "get(feature,'type')=='" + t + "'?'" + TYPE_COLORS[t] + "':";
         }).join('') + "'goldenrod'";
+
+        // Legend, generated from the SAME map that drives the renderer so it
+        // cannot drift. The pseudo-* trio is collapsed to one entry, and the
+        // fallback color is labeled "other".
+        var legend = document.getElementById('jbrowse2_legend');
+        if (legend) {
+            var entries = [
+                ['gene', TYPE_COLORS.gene],
+                ['mRNA', TYPE_COLORS.mRNA],
+                ['CDS', TYPE_COLORS.CDS],
+                ['exon', TYPE_COLORS.exon],
+                ['polypeptide', TYPE_COLORS.polypeptide],
+                ['t/r/ncRNA', TYPE_COLORS.tRNA],
+                ['pseudogene*', TYPE_COLORS.pseudogene],
+                ['other', 'goldenrod']
+            ];
+            entries.forEach(function (e) {
+                var span = document.createElement('span');
+                var sw = document.createElement('span');
+                sw.className = 'swatch';
+                sw.style.background = e[1];
+                span.appendChild(sw);
+                span.appendChild(document.createTextNode(e[0]));
+                legend.appendChild(span);
+            });
+        }
         listing.datasets.forEach(function (ds) {
             if (ds.files['gff-tabix'] && ds.files['gff-csi']) {
                 tracks.push({
