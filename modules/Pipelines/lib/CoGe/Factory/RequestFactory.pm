@@ -9,6 +9,7 @@ use CoGe::Request::Experiment;
 use CoGe::Request::NExperiments;
 use CoGe::Request::ExperimentAnalysis;
 use CoGe::Request::Genome;
+use CoGe::Request::Dataset;
 use CoGe::Request::TwoGenomes;
 use CoGe::Request::NGenomes;
 use CoGe::Exception::Generic;

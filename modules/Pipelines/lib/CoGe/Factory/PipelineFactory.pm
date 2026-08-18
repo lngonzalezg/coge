@@ -6,6 +6,7 @@ use File::Spec::Functions qw(catfile);
 
 use CoGe::Builder::Export::Fasta;
 use CoGe::Builder::Export::Gff;
+use CoGe::Builder::IndexAnnotation;
 use CoGe::Builder::Export::Genome;
 use CoGe::Builder::Export::Experiment;
 use CoGe::Builder::Load::Experiment;
