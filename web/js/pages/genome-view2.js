@@ -87,6 +87,14 @@
         // in here later.
         var tracks = [];
         var skipped = [];
+        // Give annotation tracks the viewport instead of LGV's short default
+        // display height: split the space below the header/controls across
+        // the feature tracks (sequence track keeps its natural small size).
+        var renderable = listing.datasets.filter(function (ds) {
+            return ds.files['gff-tabix'] && ds.files['gff-csi'];
+        }).length;
+        var trackHeight = Math.max(300,
+            Math.floor((window.innerHeight - 320) / Math.max(1, renderable)));
         listing.datasets.forEach(function (ds) {
             if (ds.files['gff-tabix'] && ds.files['gff-csi']) {
                 tracks.push({
@@ -94,6 +102,11 @@
                     trackId: 'dataset-' + ds.id,
                     name: ds.name + (ds.restricted ? ' (restricted)' : ''),
                     assemblyNames: [assemblyName],
+                    displays: [{
+                        type: 'LinearBasicDisplay',
+                        displayId: 'dataset-' + ds.id + '-LinearBasicDisplay',
+                        height: trackHeight
+                    }],
                     adapter: {
                         type: 'Gff3TabixAdapter',
                         gffGzLocation: { uri: API + 'datasets/' + ds.id + '/files/gff-tabix', locationType: 'UriLocation' },

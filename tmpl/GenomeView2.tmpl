@@ -1,10 +1,14 @@
 <!-- JBrowse2 viewer shell (Phase B). Bundles are VENDORED under
      web/js/jbrowse2/ -- the CSP is script-src 'self', deliberately, so no CDN.
-     LGV pinned to the mature 2.x line: 3.1.0 threw "invalid range in character
-     class" from its config-expression system the first time feature rendering
-     actually ran (2026-08-18). React 18 UMD satisfies both lines (2.x wants
-     >=16.8); React 19 dropped UMD builds, so 18.x is the ceiling for this
-     script-tag embedding style. Web workers come from blob: URLs, covered by
+     The DEVELOPMENT UMD is served deliberately (2026-08-18). Upstream's UMD
+     pipeline is unmaintained: the @jbrowse/react-linear-genome-view 3.1.0 npm
+     tarball ships a stale 2.18.0 UMD, and the minified production build of it
+     throws "invalid range in character class" from its config-expression
+     system as soon as feature rendering runs -- the unminified build renders
+     correctly (verified live). 16MB on disk but ~3-4MB over the wire (gzip),
+     and debuggable. Revisit if upstream fixes their UMD builds. React 18 UMD
+     satisfies the peer dep; React 19 dropped UMD builds, so 18.x is the
+     ceiling for script-tag embedding. Web workers come from blob: URLs, covered by
      the worker-src 'self' blob: CSP directive (added 2026-08-17). -->
 
 <style>
@@ -28,5 +32,5 @@
 
 <script src="js/jbrowse2/react-18.3.1.min.js"></script>
 <script src="js/jbrowse2/react-dom-18.3.1.min.js"></script>
-<script src="js/jbrowse2/react-linear-genome-view-2.18.0.umd.min.js"></script>
+<script src="js/jbrowse2/react-linear-genome-view-2.18.0.umd.development.js"></script>
 <script src="js/pages/genome-view2.js"></script>
