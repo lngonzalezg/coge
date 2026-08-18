@@ -95,6 +95,29 @@
         }).length;
         var trackHeight = Math.max(300,
             Math.floor((window.innerHeight - 320) / Math.max(1, renderable)));
+
+        // Color features by TYPE via a jexl callback -- JBrowse2's default
+        // paints every feature the same goldenrod regardless of type. Palette
+        // anchored on the CoGe design system (gene = coge green-8), contrasts
+        // chosen to survive common colorblindness; pseudo-* muted to grays.
+        // Types map to this genome's actual inventory plus common GFF types;
+        // anything unmapped keeps the JBrowse2 default.
+        var TYPE_COLORS = {
+            gene: '#2f9e44',
+            mRNA: '#1971c2',
+            CDS: '#e8590c',
+            exon: '#94d82d',
+            polypeptide: '#6741d9',
+            tRNA: '#0c8599',
+            rRNA: '#0c8599',
+            ncRNA: '#0c8599',
+            pseudogene: '#868e96',
+            pseudogenic_transcript: '#adb5bd',
+            pseudogenic_exon: '#ced4da'
+        };
+        var colorJexl = 'jexl:' + Object.keys(TYPE_COLORS).map(function (t) {
+            return "get(feature,'type')=='" + t + "'?'" + TYPE_COLORS[t] + "':";
+        }).join('') + "'goldenrod'";
         listing.datasets.forEach(function (ds) {
             if (ds.files['gff-tabix'] && ds.files['gff-csi']) {
                 tracks.push({
@@ -105,7 +128,11 @@
                     displays: [{
                         type: 'LinearBasicDisplay',
                         displayId: 'dataset-' + ds.id + '-LinearBasicDisplay',
-                        height: trackHeight
+                        height: trackHeight,
+                        renderer: {
+                            type: 'SvgFeatureRenderer',
+                            color1: colorJexl
+                        }
                     }],
                     adapter: {
                         type: 'Gff3TabixAdapter',
