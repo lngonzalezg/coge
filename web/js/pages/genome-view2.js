@@ -113,7 +113,17 @@
         var state = JB.createViewState({
             assembly: assembly,
             tracks: tracks,
-            location: location
+            location: location,
+            // Match CoGe's design system (coge-modern.css green-8/green-9)
+            // instead of JBrowse2's default MUI blue.
+            configuration: {
+                theme: {
+                    palette: {
+                        primary:   { main: '#2f9e44' },
+                        secondary: { main: '#2b8a3e' }
+                    }
+                }
+            }
         });
         // Show the reference sequence and every renderable annotation track by
         // default -- an empty view with a hidden track selector is a bad first

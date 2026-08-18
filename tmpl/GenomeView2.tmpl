@@ -14,7 +14,14 @@
      min-height keeps the page from looking like a cramped strip. 120px
      approximates the CoGe header; embeds (?embed=1) have no header, and the
      rule errs generous rather than clipping. */
-  #jbrowse2_view { width: 100%; min-height: calc(100vh - 120px); }
+  #jbrowse2_view {
+    width: 100%;
+    min-height: calc(100vh - 120px);
+    /* CoGe design system: green-8 primary border so the browser box matches
+       the rest of the page (vars from coge-modern.css). */
+    border: 1px solid var(--coge-green-8, #2f9e44);
+    border-radius: var(--coge-radius, 4px);
+  }
 </style>
 <div id="jbrowse2_error" style="display:none;padding:1em;color:#a00;"></div>
 <div id="jbrowse2_view"></div>
