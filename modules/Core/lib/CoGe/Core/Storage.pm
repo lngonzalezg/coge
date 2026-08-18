@@ -57,6 +57,7 @@ BEGIN {
       get_genome_cache_path get_experiment_cache_path get_workflow_results add_workflow_result
       get_workflow_results_file get_workflow_log_file get_download_path
       get_experiment_path get_experiment_files get_experiment_metadata
+      get_dataset_source_path
       reverse_complement get_irods_file get_irods_path get_popgen_result_path
       is_popgen_finished data_type get_sra_cache_path irods_mkdir irods_rm get_gff_cache_path
       $DATA_TYPE_QUANT $DATA_TYPE_POLY $DATA_TYPE_ALIGN $DATA_TYPE_MARKER $DATA_TYPE_SEQUENCE
@@ -379,6 +380,24 @@ sub get_experiment_cache_path {
     }
 
     return catdir($cache_dir, 'experiments', $eid);
+}
+
+# Where a dataset's preserved source file lives (e.g. the GFF an annotation was
+# loaded from): DATADIR/annotation/<tiered dataset_id>/<original filename>.
+# Same convention as genomes (SEQDIR/<tiered gid>/genome.faa) and experiments
+# (EXPDIR/<tiered eid>/) -- computed from the id, never stored in the database.
+# load_annotation.pl writes here on success (2026-08-18; before that the
+# uploaded file was parsed from upload scratch and lost). Returns the DIRECTORY;
+# no existence check, since the writer calls this before creating it.
+sub get_dataset_source_path {
+    my $dsid = shift;
+    return unless $dsid;
+    my $datadir = CoGe::Accessory::Web::get_defaults()->{'DATADIR'};
+    unless ($datadir) {
+        print STDERR "Storage::get_dataset_source_path: WARNING, conf file parameter DATADIR is blank!\n";
+        return;
+    }
+    return catdir($datadir, 'annotation', get_tiered_path($dsid));
 }
 
 sub get_experiment_path { #TODO rename to get_experiment_data_path

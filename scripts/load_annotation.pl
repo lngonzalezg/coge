@@ -6,6 +6,7 @@ use CoGeX;
 use Getopt::Long;
 use File::Path;
 use File::Basename;
+use File::Copy qw(copy);
 use File::Spec::Functions qw( catdir catfile );
 use File::Touch;
 use URI::Escape;
@@ -489,8 +490,34 @@ print STDOUT "Time to parse: "
   . ", Time to load: "
   . timestr( timediff( $t3, $t2 ) ) . "\n";
 
+# Preserve the source annotation file in permanent storage, mirroring what
+# load_genome.pl does for FASTA (SEQDIR/<tiered gid>/genome.faa). Before
+# 2026-08-18 the file was parsed straight out of upload scratch and lost when
+# scratch was purged. Lives at DATADIR/annotation/<tiered dataset_id>/<name>,
+# where <name> equals the dataset's `name` column, so the path is fully
+# computable from the dataset row (see Storage::get_dataset_source_path).
+# Runs only after every DB insert has succeeded -- a preserved file always
+# means a completed load -- and fails the task visibly (before log.done) if
+# the copy fails. Note $data_file is the file as parsed: if the upload was
+# gzipped it was decompressed above, and the decompressed form is what is
+# kept (consistent with the dataset name, which also drops the .gz).
+my $preserve_dir = get_dataset_source_path($dataset->id);
+if ($preserve_dir) {
+    my $preserve_file = catfile($preserve_dir, basename($data_file));
+    print STDOUT "log: Preserving annotation file in storage\n";
+    mkpath($preserve_dir) unless -d $preserve_dir;
+    unless (-d $preserve_dir and copy($data_file, $preserve_file)) {
+        print STDOUT "log: error: could not preserve annotation file to '$preserve_file': $!\n";
+        exit(-1);
+    }
+}
+else {
+    print STDOUT "log: error: could not determine annotation storage path (DATADIR unset?)\n";
+    exit(-1);
+}
+
 # Save result
-unless (add_workflow_result($user_name, $wid, 
+unless (add_workflow_result($user_name, $wid,
         {
             type           => 'dataset',
             id             => int($dataset->id),
