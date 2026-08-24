@@ -127,21 +127,11 @@ sub generate_links {
             qw(COUNT GEVO MASKED_GEVO FASTA_LINK GENE_LIST GENE_NAMES) ),
             "\n";
 
-        # Take into account transitivity.
-        #
-        # The outer loop variable was named $id2 (shadowed immediately by the middle
-        # loop), so $condensed{$id1} resolved to the package global $id1 -- the
-        # --dsgid1 argument -- instead of a hash key. That made this whole pass dead
-        # code, and autovivified a bogus $condensed{<genome id>} entry that the emit
-        # loop below turned into a junk trailing row in every .condensed file.
-        #
-        # The guard is $id1 eq $id3: $id2 is a neighbour of $id1 and the pairs are
-        # inserted symmetrically across genomes, so $id1 can never equal $id2, while
-        # $id3 walks back to $id1 constantly and would create a self-link.
-        foreach my $id1 ( keys %condensed ) {
+        #take into account transitivity
+        foreach my $id2 ( keys %condensed ) {
             foreach my $id2 ( keys %{ $condensed{$id1} } ) {
                 foreach my $id3 ( keys %{ $condensed{$id2} } ) {
-                    next if $id1 eq $id3;
+                    next if $id1 eq $id2;
                     $condensed{$id1}{$id3} = 1;
                     $condensed{$id3}{$id1} = 1;
                 }
