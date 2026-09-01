@@ -546,6 +546,15 @@ else if (alignment == 'GenomeThreader')
  */
 function open_status_dialog() {
     var dialog = $('#status_dialog');
+    // Clear the completion flag for THIS run. It gates both status_dialog_message()
+    // and finish_status_dialog(), is set to 1 when a run finishes, and was never
+    // reset -- so from the second run onwards finish_status_dialog() returned at its
+    // guard, leaving the modal stuck on "Running GEvo ..." and #results_section
+    // hidden, even though the analysis had completed and handle_results() had already
+    // filled #results (the images load; the user just never sees them). That is the
+    // "change a parameter, click Run again, it hangs" report. Reset here rather than
+    // in populate_page_obj(), which handle_results() also calls mid-run.
+    pageObj.run_complete = 0;
     dialog.find('.dialog-error,.dialog-complete').hide();
     dialog.find('.dialog-running').show();
     dialog.find('.dialog-text').html('');
