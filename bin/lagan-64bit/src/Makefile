@@ -1,6 +1,11 @@
 CC = gcc $(CFLAGS)
 CPP = g++ $(CFLAGS)
-CFLAGS = -O3 # -Wall -W
+# -fcommon and -fgnu89-inline are required to build this on GCC 10+, which this
+# 2003-era code predates. Without -fcommon the tentative definition of `indeces`
+# is a multiple definition; without -fgnu89-inline the bare `inline` definitions
+# of findPrev() and CHmatchscore() in fchaos.c emit no external symbol and the
+# link fails on undefined references.
+CFLAGS = -O3 -fcommon -fgnu89-inline # -Wall -W
 TRGT_DIR = ..
 
 all: ../anchors ../chaos ../order ../mlagan ../prolagan ../utils/bin2mf ../utils/bin2bl ../utils/cextract ../utils/cstat ../utils/contigorder ../utils/getbounds ../utils/getlength ../utils/getoverlap ../utils/rc ../utils/seqmerge ../utils/scorealign ../utils/scorecontigs ../utils/getcontigpos ../utils/fa2xfa ../utils/Glue ../utils/dotplot ../utils/overlay

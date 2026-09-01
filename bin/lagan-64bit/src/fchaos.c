@@ -14,7 +14,12 @@
 #define VER_NUM "0.932"
 #define BLOSUM_FILE "blosum62s.txt"
 #define BLOSUM_FILE_SIZE 24
-#define NUC_FILE "/opt/apache/coge/bin/lagan-64bit/nucmatrix.txt"
+/* Absolute, and it must match where CoGe is actually installed: readSubstMatrix()
+ * assert()s on the FILE* and aborts (SIGABRT) if it cannot open this, so a wrong
+ * path makes every chaos run die instantly with an empty output file. The path
+ * read "/opt/apache/coge/..." while CoGe installs at "/opt/apache2/coge/...", so
+ * GEvo's CHAOS option silently produced zero HSPs for every comparison. */
+#define NUC_FILE "/opt/apache2/coge/bin/lagan-64bit/nucmatrix.txt"
 #define NUC_FILE_SIZE 6
 
 #define MAX2(x,y)   ( (x) >= (y) ? (x) : (y) )
