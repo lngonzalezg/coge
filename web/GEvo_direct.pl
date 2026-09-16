@@ -51,7 +51,7 @@ sub gen_html {
     $name = $USER->first_name if $USER->first_name;
     $name .= " " . $USER->last_name if $USER->first_name && $USER->last_name;
     $template->param( USER       => $name,
-                      HELP       => "/wiki/index.php?title=GEvo_direct",
+                      HELP       => 'GEvo',
                       TITLE      => "GEvo direct:  reviewing past results.", 
                       PAGE_TITLE => "GEvo direct" );
     $template->param( LOGON      => 1 ) unless $USER->user_name eq "public";

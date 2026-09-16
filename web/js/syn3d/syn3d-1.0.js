@@ -589,7 +589,7 @@ var renderSynMap = function (graph_object, element_id, persistence) {
 
     /* FUNCTION: Generate GEvo Link */
     function genGevoLink(xDbId, yDbId, zDbId) {
-        // https://genomevolution.org/wiki/index.php/Linking_to_GEvo
+        // https://genomevolution.github.io/p/Linking_to_GEvo
         var linkbase = SERVER_URL + "GEvo.pl?";
         var seqX = 'fid1=' + xDbId + ';';
         var seqY = 'fid2=' + yDbId + ';';

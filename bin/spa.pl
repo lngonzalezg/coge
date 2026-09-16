@@ -119,7 +119,7 @@ sub usage {
 Description:
  Syntenic Path Assembly algorithm
  Uses synteny output from DagChainer to generate a syntenic path assembly
- Details on algorithm and implementation in CoGe: https://genomevolution.org/wiki/index.php/Syntenic_path_assembly
+ Details on algorithm and implementation in CoGe: https://genomevolution.github.io/p/Syntenic_path_assembly
 
 Options:
  -alignfile <syntenic alignment file           :  syntenic file from Synmap, usually named: XXXX.aligncoords.gcoords

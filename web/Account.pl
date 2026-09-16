@@ -34,7 +34,7 @@ sub gen_html {
                       SUPPORT_EMAIL => $P->{SUPPORT_EMAIL},
                       HEAD       => qq{},
                       HOME       => './',
-                      HELP       => 'My Account',
+                      HELP       => 'User_account',
                       WIKI_URL   => $P->{WIKI_URL} || '',
                       ADMIN_ONLY => $USER->is_admin,
                       USER       => $USER->display_name || '',

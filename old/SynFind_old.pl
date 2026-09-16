@@ -112,7 +112,7 @@ sub gen_html {
       HTML::Template->new( filename => $P->{TMPLDIR} . 'generic_page.tmpl' );
     $template->param( TITLE      => 'Syntenic Compiler' );
     $template->param( PAGE_TITLE => 'SynFind' );
-    $template->param( HELP       => '/wiki/index.php?title=SynFind' );
+    $template->param( HELP       => 'SynFind' );
     my $name = $USER->user_name;
     $name = $USER->first_name if $USER->first_name;
     $name .= " " . $USER->last_name if $USER->first_name && $USER->last_name;
@@ -1215,7 +1215,7 @@ qq{<span class="small">Pad Sequence in GEvo <input type="text" size=11 id=pad si
     $log_file =~ s/$TEMPDIR/$TEMPURL/;
 
     $html .=
-qq{<br><br><a href="/wiki/index.php/SynFind#Syntenic_Depth" target=_new>Syntenic Depth:</a> <span class=small>(Query genome depth coverage)</span><br>}
+qq{<br><br><a href="https://genomevolution.github.io/p/SynFind#Syntenic_Depth" target=_new>Syntenic Depth:</a> <span class=small>(Query genome depth coverage)</span><br>}
       . get_master_histograms(
         target_dbs       => \@target_info,
         query_dsgid      => $source_dsgid,

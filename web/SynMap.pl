@@ -471,7 +471,7 @@ sub gen_body {
 	# 	PAGE_TITLE         => $PAGE_TITLE,
 	# 	SPLASH_COOKIE_NAME => $PAGE_TITLE . '_splash_disabled',
     #     SPLASH_CONTENTS    => 'This page allows you to compare synteny between two genomes.'
-	# 	HELP_URL           => 'https://genomevolution.org/wiki/index.php/SynMap'
+	# 	HELP_URL           => 'https://genomevolution.github.io/p/SynMap'
 	# );
 	return $template->output;
 }

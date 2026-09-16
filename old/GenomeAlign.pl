@@ -101,7 +101,7 @@ sub gen_html {
     my $template =
       HTML::Template->new( filename => $P->{TMPLDIR} . 'generic_page.tmpl' );
     $template->param( PAGE_TITLE => 'GenomeAlign' );
-    $template->param( HELP       => '/wiki/index.php?title=GenomeAlign' );
+    $template->param( HELP       => 'GenomeAlign' );
 
     # print STDERR "user is: ",$USER,"\n";
     my $name = $USER->user_name;

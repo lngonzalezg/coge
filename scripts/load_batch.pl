@@ -180,7 +180,7 @@ print STDOUT "All done!\n";
 exit;
 
 #-------------------------------------------------------------------------------
-# Format defined here:  http://genomevolution.org/wiki/index.php/Experiment_Metadata
+# Format defined here:  https://genomevolution.github.io/p/Experiment_Metadata
 sub get_metadata {
     my $file = shift;
     my $metadata = shift;
@@ -288,7 +288,7 @@ sub process_dir {
 
     unless ($load_count) {
         print "log: error: no data files can be loaded, check that file extensions and metadata fields are correct ",
-              "<a href='https://genomevolution.org/wiki/index.php/LoadBatch'>here</a>.", "\n";
+              "<a href='https://genomevolution.github.io/p/LoadBatch'>here</a>.", "\n";
         exit(-1);
     }
     

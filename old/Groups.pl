@@ -35,7 +35,7 @@ sub gen_html {
     my $html;
     my $template =
       HTML::Template->new( filename => $P->{TMPLDIR} . 'generic_page.tmpl' );
-    #$template->param( HELP => "/wiki/index.php?title=$PAGE_TITLE" );
+    #$template->param( HELP => $PAGE_TITLE );
     my $name = $USER->user_name;
     $name = $USER->first_name if $USER->first_name;
     $name .= " " . $USER->last_name if $USER->first_name && $USER->last_name;

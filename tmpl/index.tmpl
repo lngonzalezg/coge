@@ -16,7 +16,7 @@ $(document).ready(function(){
         ["500px-3440_3441.CDS-CDS.blastn.dag_geneorder_D20_g10_A5.1-1.w800.png", "Shewanella baltica strains syntenic dotplot showing an x-alignment","X-alignment"],
         ["800px-Master_3068_8.CDS-CDS.blastn_geneorder_D20_g10_A5.w2000.ks.png","Syntenic dotplot of Arabidopsis thaliana vs lyrata","Syntenic_comparison_of_Arabidopsis_thaliana_and_Arabidopsis_lyrata"],
         ["Master_2361_2360.CDS-CDS.blastn_geneorder_D20_g10_A5.w500.png","Acidovorax syntenic dotplot showing an x-alignment","X-alignment"],
-        ["600px-System_framework.png","CoGe's open-ended interconnected analysis network","CoGe_system_arcitecture"],
+        ["600px-System_framework.png","CoGe's open-ended interconnected analysis network","CoGe_system_architecture"],
         ["600px-Syntenic_dotplot_medicago_truncatula_v2_vs_v3.png","Comparison of new and old genome assemblies of Medicago truncatula","Syntenic_dotplot_medicago_truncatula_version_3_versus_version_2"],
         ["800px-GenomeView_GEvo-links.png", "Visualizing variation in GC content and links for syntenic gene analyses", "GenomeView_examples#GEvo_Links"],
 
@@ -29,7 +29,7 @@ $(document).ready(function(){
         ["600px-CoGeBlast-At1g02120-eval.png", "CoGeBlast evaluating potential homologous hits", "Phylogenetics_in_CoGe#Evaluate_potential_homologs_in_CoGeBlast_and_select_the_.22good.22_ones"],
         ["Plasmodium_knowlesi_cds_gc_content_histogram.png", "GC content distribution for all protein sequences of a Plasmodium species","Plasmodia_comparative_genomics"],
         ["FeatMap-screenshot.png", "Identifying genomic distributions of gene families", "GenomeMap"],
-        ["GEvo-ecoli-insertion-direct-repeats.png", "Identifying direct repeats flanking an insertion in E. coli", " Analysis_of_variations_found_in_genomes_of_Escherichia_coli_strain_K12_DH10B_and_strain_B_REL606_using_SynMap_and_GEvo_analysis#High-resolution_GEvo_analysis_of_an_insertion:_finding_direct_sequence_repeats"],
+        ["GEvo-ecoli-insertion-direct-repeats.png", "Identifying direct repeats flanking an insertion in E. coli", "Analysis_of_variations_found_in_genomes_of_Escherichia_coli_strain_K12_DH10B_and_strain_B_REL606_using_SynMap_and_GEvo_analysis#High-resolution_GEvo_analysis_of_an_insertion:_finding_direct_sequence_repeats"],
         ["800px-GeLo-nucleotides.png", "Visualizing individual nucleotides with GenomeView", "GenomeView_examples#Chromosome_Background"],
         ["600px-Phylogeny_fr_PhyML.png","Linking to phylogeny.fr for one-click phylogenetics","Phylogenetics_in_CoGe#Send_sequences_to_phylogeny.fr"]
     );
@@ -178,7 +178,7 @@ function cross_fade(selector, image, delay) {
                 viewer.on("click", $.proxy(pause, run_button))
                     .on("click", function() { elem.replaceWith($(image[index][3]).css("width", "95%").css("height", "500px")); });
             } else {
-                viewer.on("click", function() { window.open("https://genomevolution.org/wiki/index.php/"+image[index][2]); });
+                viewer.on("click", function() { window.open("https://genomevolution.github.io/p/"+image[index][2]); });
             }
 
             viewer.html("")
@@ -301,11 +301,11 @@ Maintenance complete.  Please email the CoGe team if you experience any problems
             <div class="coge-section-head">
                 <h3>Tools</h3>
                 <span class="coge-section-links">New to CoGe?
-                    <a href="https://genomevolution.org/wiki/index.php/New_to_CoGe">Get started</a> &middot;
-                    <a href="https://genomevolution.org/wiki/index.php/How_to_get_a_CoGe_account">Create an Account</a> &middot;
-                    <a href="https://genomevolution.org/wiki/index.php/Tutorials">Tutorials</a> &middot;
-                    <a href="https://genomevolution.org/wiki">Documentation</a> &middot;
-                    <a href="https://genomevolution.org/wiki/index.php/FAQs">FAQ</a>
+                    <a href="https://genomevolution.github.io/p/New_to_CoGe">Get started</a> &middot;
+                    <a href="https://genomevolution.github.io/p/How_to_get_a_CoGe_account">Create an Account</a> &middot;
+                    <a href="https://genomevolution.github.io/p/Tutorials">Tutorials</a> &middot;
+                    <a href="https://genomevolution.github.io/p/Documentation">Documentation</a> &middot;
+                    <a href="https://genomevolution.github.io/p/FAQs">FAQ</a>
                 </span>
             </div>
             <div id="tools-grid"></div>
@@ -377,7 +377,7 @@ Maintenance complete.  Please email the CoGe team if you experience any problems
         {
     	    name: 'Load Experiment (LoadExp+)',
     	    description: 'Load experimental data from various standard input formats (such as BED, WIG, BAM, and FASTQ) and run downstream analyses including read mapping, expression measurement, and SNP identification.',
-            docs: 'LoadExp%2B',
+            docs: 'LoadExp',
     	    img: 'picts/LoadExperiment.svg',
             url: 'LoadExperiment.pl'
     	}
@@ -395,7 +395,7 @@ Maintenance complete.  Please email the CoGe team if you experience any problems
         if (tool.example)
             $('<a href="' + tool.example + '">Example</a>').appendTo(links);
         if (tool.docs)
-            $('<a href="https://genomevolution.org/wiki/index.php/' + tool.docs + '" target="_blank">Documentation</a>').appendTo(links);
+            $('<a href="https://genomevolution.github.io/p/' + tool.docs + '" target="_blank">Documentation</a>').appendTo(links);
     });
 </script>
 

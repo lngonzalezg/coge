@@ -103,7 +103,7 @@ sub generate_body {
     	LOAD_ID       => $LOAD_ID,
     	WORKFLOW_ID   => $WORKFLOW_ID,
         API_BASE_URL  => 'api/v1/', #TODO move into config file or module
-        HELP_URL      => 'https://genomevolution.org/wiki/index.php/Project',
+        HELP_URL      => 'https://genomevolution.github.io/p/Project',
         SUPPORT_EMAIL => $CONF->{SUPPORT_EMAIL},
         USER          => $USER->user_name
     );

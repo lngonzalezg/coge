@@ -85,7 +85,7 @@ sub gen_html {
     				  PAGE_LINK  => $LINK,
     				  SUPPORT_EMAIL => $CONF->{SUPPORT_EMAIL},
 				      HOME       => './',
-                      HELP       => $PAGE_TITLE,
+                      HELP       => 'Popgen',
                       WIKI_URL   => $CONF->{WIKI_URL} || '',
                       ADMIN_ONLY => $USER->is_admin,
                       CAS_URL    => $CONF->{CAS_URL} || '',

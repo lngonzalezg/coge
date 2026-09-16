@@ -85,7 +85,7 @@ sub generate_body {
 #        )
     );
 
-    $tmpl->param( wikifeed => $CONF->{WIKI_URL}."/CoGepedia:Current_events" ) if $CONF->{WIKI_URL};
+    $tmpl->param( wikifeed => $CONF->{WIKI_URL}."/p/CoGepedia:Current_events" ) if $CONF->{WIKI_URL};
 
     return $tmpl->output;
 }

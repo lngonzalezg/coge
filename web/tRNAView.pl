@@ -85,7 +85,7 @@ sub gen_html {
                       TITLE      => 'CoGe tRNA and tmRNA Search Tool',
                       SUPPORT_EMAIL => $P->{SUPPORT_EMAIL},
                       HOME       => './',
-                      HELP       => 'tRNAView',
+                      HELP       => 'TRNAView',
                       WIKI_URL   => $P->{WIKI_URL} || '',
                       USER       => $USER->display_name || '' );
     $template->param( LOGON => 1 ) unless $USER->user_name eq "public";

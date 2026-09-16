@@ -201,7 +201,7 @@ sub gen_html {
           HTML::Template->new( filename => $TMPLDIR . 'generic_page.tmpl' );
         $template->param( TITLE      => 'TFBS Motif Finder' );
         $template->param( PAGE_TITLE => 'MotifView' );
-        $template->param( HELP       => '/wiki/index.php?title=MotifView' );
+        $template->param( HELP       => 'MotifView' );
         my $name = $USER->user_name;
         $name = $USER->first_name if $USER->first_name;
         $name .= " " . $USER->last_name
@@ -1214,7 +1214,7 @@ qq{<td><a href="javascript:void(0);" id="history_dialog_button" class='ui-button
     $html         .= $gobe_buttons;
     $html         .= qq{<DIV id=flashcontent></DIV>};
     $html .=
-qq{<br><a href="http://genomevolution.org/wiki/index.php/Gobe" class=small style="color: red" target=_new>Click here for help!</a>  <a href="http://get.adobe.com/flashplayer/" target=_new class="small">No results?  Rerun by pressing "Run GEvo Analysis!" again.  Still no results? Try installing the latest version of Flash</a>.};
+qq{<br><a href="https://genomevolution.github.io/p/Gobe" class=small style="color: red" target=_new>Click here for help!</a>  <a href="http://get.adobe.com/flashplayer/" target=_new class="small">No results?  Rerun by pressing "Run GEvo Analysis!" again.  Still no results? Try installing the latest version of Flash</a>.};
     $html .= $gobe_buttons;
 
     $html .= qq{<table>};
@@ -5305,7 +5305,7 @@ Thank you for using the Genome Evolution Analysis Tool! The results from your la
 http://} . $server . qq{/CoGe/GEvo_direct.pl?name=$basefilename
 
 To contact us or to cite CoGe please visit:
-http://genomevolution.org/wiki/index.php/Contact_Page
+https://genomevolution.github.io/p/Contact_Page
 
 You can use this URL for regenerating your results:
 $full_gevo_url

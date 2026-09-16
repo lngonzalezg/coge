@@ -75,7 +75,7 @@ sub gen_html {
       HTML::Template->new( filename => $P->{TMPLDIR} . 'generic_page.tmpl' );
     $template->param( TITLE      => 'HSP Viewer' );
     $template->param( PAGE_TITLE => 'HSPView' );
-    #$template->param( HELP       => "/wiki/index.php?title=HSPView" );
+    #$template->param( HELP       => 'HSPView' );
     $template->param( HELP       => $P->{SERVER} );
     my $name = $USER->user_name;
     $name = $USER->first_name if $USER->first_name;

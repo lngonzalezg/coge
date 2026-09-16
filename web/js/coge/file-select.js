@@ -568,7 +568,7 @@ var coge = window.coge = (function(namespace) {
 							return;
 						}
 						if (result.error.message && result.error.message.endsWith('rc=4')) {
-							table.html('<tr><td><span class="alert">Your CyVerse account does not appear to be linked to CoGe.  Please see this page for more information: <a href="https://genomevolution.org/wiki/index.php/Connecting_to_CyVerse_Data_Store">Connecting to CyVerse Data Store</a><br>Please contact us at <a href="mailto:coge.genome@gmail.com">coge.genome@gmail.com</a> if you continue to encounter problems.</span></td></tr>');
+							table.html('<tr><td><span class="alert">Your CyVerse account does not appear to be linked to CoGe.  Please see this page for more information: <a href="https://genomevolution.github.io/p/IPlant_Data_Store">Connecting to CyVerse Data Store</a><br>Please contact us at <a href="mailto:coge.genome@gmail.com">coge.genome@gmail.com</a> if you continue to encounter problems.</span></td></tr>');
 							return;
 						}
 						table

@@ -116,7 +116,7 @@ sub gen_html {
     #$template->param(TITLE=>'CoGe BLAST Analysis');
     $template->param( PAGE_TITLE => 'BLAST',
     				  PAGE_LINK  => $LINK,
-    				  HELP       => '/wiki/index.php?title=CoGeBlast' );
+    				  HELP       => 'CoGeBlast' );
     my $name = $USER->user_name;
     $name = $USER->first_name if $USER->first_name;
     $name .= ' ' . $USER->last_name if $USER->first_name && $USER->last_name;

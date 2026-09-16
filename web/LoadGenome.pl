@@ -119,7 +119,7 @@ sub generate_body {
         LOAD_ID       => $LOAD_ID,
         WORKFLOW_ID   => $WORKFLOW_ID,
         API_BASE_URL  => 'api/v1/', #TODO move into config file or module
-        HELP_URL      => 'https://genomevolution.org/wiki/index.php/LoadGenome',
+        HELP_URL      => 'https://genomevolution.github.io/p/LoadGenome',
         SUPPORT_EMAIL => $CONF->{SUPPORT_EMAIL},
         ENABLE_NCBI              => 1,
         DEFAULT_TAB              => 0,

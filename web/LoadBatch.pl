@@ -123,7 +123,7 @@ sub generate_body {
         LOAD_ID       => $LOAD_ID,
         WORKFLOW_ID   => $WORKFLOW_ID,
         API_BASE_URL  => 'api/v1/', #TODO move into config file or module
-        HELP_URL      => 'https://genomevolution.org/wiki/index.php/LoadBatch',
+        HELP_URL      => 'https://genomevolution.github.io/p/LoadBatch',
         SUPPORT_EMAIL => $CONF->{SUPPORT_EMAIL},
         DEFAULT_TAB              => 0,
         MAX_IRODS_LIST_FILES     => 1000,

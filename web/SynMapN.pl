@@ -72,7 +72,7 @@ sub generate_html {
             TITLE        => "SynMapN",
             PAGE_LINK    => $LINK,
             HOME         => './',
-            HELP         => 'SynMapN',
+            HELP         => 'SynMap3D',
             WIKI_URL     => $CONF->{WIKI_URL} || '',
 
             ADMIN_ONLY   => $USER->is_admin,
@@ -177,7 +177,7 @@ sub generate_body {
         SERVER_URL    => $CONF->{SERVER},
         #DATA_LOC      => $CONF->{SYN3DIR},
         DATA_LOC      => catdir($CONF->{URL}, "data", "syn3d"),
-        HELP_URL      => 'https://genomevolution.org/wiki/index.php/SynMapN',
+        HELP_URL      => 'https://genomevolution.github.io/p/SynMap3D',
         SUPPORT_EMAIL => $CONF->{SUPPORT_EMAIL},
         DEFAULT_TAB              => 0,
         USER                     => $USER->user_name

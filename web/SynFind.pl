@@ -1558,7 +1558,7 @@ sub get_results {
     $log_file =~ s/$TEMPDIR/$TEMPURL/;
 
     $html .= qq{<br><br><strong>Syntenic Depth</strong> }
-        . qq{<a href="/wiki/index.php/SynFind#Syntenic_Depth" target=_new class="ui-icon ui-icon-help" style='border:1px solid gray;border-radius:50%;'></a>}
+        . qq{<a href="https://genomevolution.github.io/p/SynFind#Syntenic_Depth" target=_new class="ui-icon ui-icon-help" style='border:1px solid gray;border-radius:50%;'></a>}
         . qq{ <span class="small note">Query genome depth coverage</span><br>}
         . get_master_histograms(
                 target_dbs       => \@target_info,

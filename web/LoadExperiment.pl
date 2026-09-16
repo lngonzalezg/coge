@@ -79,7 +79,7 @@ sub generate_html {
 		                  TITLE      => "LoadExp+",
         	              PAGE_LINK  => $LINK,
 			              HOME       => './',
-                          HELP       => 'LoadExp+',
+                          HELP       => 'LoadExp',
                           WIKI_URL   => $CONF->{WIKI_URL} || '',
                           ADMIN_ONLY => $USER->is_admin,
                           USER       => $USER->display_name || '',
@@ -122,7 +122,7 @@ sub generate_body {
     	LOAD_ID       => $LOAD_ID,
     	WORKFLOW_ID   => $WORKFLOW_ID,
         API_BASE_URL  => 'api/v1/', #TODO move into config file or module
-        HELP_URL      => 'https://genomevolution.org/wiki/index.php/LoadExp+',
+        HELP_URL      => 'https://genomevolution.github.io/p/LoadExp',
         SUPPORT_EMAIL => $CONF->{SUPPORT_EMAIL},
         DEFAULT_TAB              => 0,
         ENABLE_SRA               => 1,

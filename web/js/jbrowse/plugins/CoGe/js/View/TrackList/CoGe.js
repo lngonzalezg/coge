@@ -111,7 +111,7 @@ define(['dojo/_base/declare',
 	_add_help: function(label, page) {
 		this.browser.addGlobalMenuItem('help', new MenuItem({
 			label: label,
-			onClick: function(){ window.open('https://genomevolution.org/wiki/index.php/' + page, '_blank'); }
+			onClick: function(){ window.open('https://genomevolution.github.io/p/' + page, '_blank'); }
 		}));
 	},
 
