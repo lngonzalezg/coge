@@ -555,6 +555,7 @@ function open_status_dialog() {
     // "change a parameter, click Run again, it hangs" report. Reset here rather than
     // in populate_page_obj(), which handle_results() also calls mid-run.
     pageObj.run_complete = 0;
+    pageObj.results_shown = 0;
     dialog.find('.dialog-error,.dialog-complete').hide();
     dialog.find('.dialog-running').show();
     dialog.find('.dialog-text').html('');
@@ -570,24 +571,41 @@ function status_dialog_message(html) {
     $('#status_dialog').find('.dialog-text').html(html);
 }
 
+// Reveal the results panel. Idempotent: whichever of handle_results() or the
+// dialog's close handler gets here first wins, the other is a no-op. Nothing
+// about showing results may depend on a UI event firing -- that coupling is what
+// left completed runs invisible behind a stuck modal.
+function reveal_results() {
+    if (pageObj.results_shown) return;
+    pageObj.results_shown = 1;
+    $('#results_section').removeClass('hidden').slideDown(function() {
+        this.scrollIntoView({behavior: 'smooth', block: 'start'});
+    });
+}
+
 function finish_status_dialog(failed) {
     var dialog = $('#status_dialog');
     if (pageObj.run_complete) return;
-    pageObj.run_complete = 1;
-    dialog.find('.dialog-running').hide();
+    // Only a genuine completion latches. monitor_log() also calls us with
+    // failed=true for its "no update on your results" warning, but that is a
+    // guess about a run STILL IN FLIGHT -- handle_results() will call us again
+    // with failed=false when it finishes. Latching on the warning made that
+    // second call return at the guard above, so the modal never closed and
+    // #results_section (hidden by open_status_dialog) was never revealed: the
+    // images were rendered into a hidden container behind a stuck dialog.
+    if (!failed) pageObj.run_complete = 1;
+    // Hide all three states, not just .dialog-running, so a success arriving
+    // after a stall warning clears the error styling it left behind.
+    dialog.find('.dialog-running,.dialog-error,.dialog-complete').hide();
     dialog.find(failed ? '.dialog-error' : '.dialog-complete').show();
     dialog.dialog('option', 'title', failed ? 'GEvo' : 'GEvo - finished');
     if (!failed) {
         dialog.find('.dialog-text').html("<div class=small>Analysis complete.</div>");
     }
-    // Reveal the results below only once the popup is out of the way, then scroll
-    // them into view -- on a tall form they otherwise land below the fold.
-    dialog.off('dialogclose').on('dialogclose', function() {
-        if (failed) return;
-        $('#results_section').removeClass('hidden').slideDown(function() {
-            this.scrollIntoView({behavior: 'smooth', block: 'start'});
-        });
-    });
+    // Still reveal on close, for the case where the user dismisses the dialog
+    // themselves. reveal_results() is idempotent, so on the normal path (where
+    // handle_results has already shown them) this is a no-op.
+    dialog.off('dialogclose').on('dialogclose', reveal_results);
     // A finished run needs no acknowledgement, so close straight away and let the
     // handler above show the results. Only an error waits for the user.
     if (!failed) dialog.dialog('close');
@@ -599,6 +617,7 @@ function handle_results (html,w, h, img_base, n_images, gevo_link, basefilename,
  if (n_images >1)
    {
     $('#results').html(html);
+    reveal_results();
 /*    var getQueryParamValue = swfobject.getQueryParamValue;
     var width = getQueryParamValue('w') || w;
     pageObj.width=width;
@@ -796,7 +815,7 @@ function monitor_log(log)
     pageObj.waittime = pageObj.waittime*2;
     if (pageObj.waittime > 60000) {pageObj.waittime = 60000;}
     message+="<br/>Next progress check in "+waittime/1000+" seconds.";
-    if (ajax.length) {setTimeout("read_log(['args__logfile', 'args__'+pageObj.basefile, 'args__tempdir', 'args__'+pageObj.tempdir], [monitor_log])",waittime);}
+    if (ajax.length) {setTimeout("read_log(['args__logfile', 'args__'+pageObj.basefile, 'args__prog', 'args__GEvo'], [monitor_log])",waittime);}
   }
   else if (!pageObj.finished)
   {

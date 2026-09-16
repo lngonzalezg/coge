@@ -1500,7 +1500,18 @@ sub read_log {
     # let an unauthenticated caller read any *.log on the host (e.g. Apache
     # access.log -> harvest username/token query params) and was interpolated
     # raw into /^$tempdir/ (ReDoS). Constrain the target to a relative path
-    # resolved strictly inside $TEMPDIR (optionally one `prog` sub-dir).
+    # resolved strictly inside the configured temp root (optionally one `prog`
+    # sub-dir). That containment is the security property and is unchanged.
+    #
+    # The root is $CONF->{TEMPDIR} (coge.conf), NOT the package $TEMPDIR. The
+    # latter is a BEGIN-time guess -- catdir($BASEDIR, 'web', 'tmp') -- and on
+    # this deployment that directory is empty: coge.conf puts the real temp tree
+    # at /scratch/coge/webtmp/. Every log therefore failed the -r test below and
+    # read_log returned undef for EVERY call. Callers treat an empty reply as
+    # "no log written yet" (GEvo's monitor_log does pageObj.nolog += 1), so after
+    # 8 polls a perfectly healthy run was declared stalled. See init() above:
+    # the per-page directory is $CONF->{TEMPDIR}/<page_title>/, which is exactly
+    # what the `prog` argument names.
     return unless defined $logfile && length $logfile;
     my $rel = CoGe::Accessory::Validate::valid_relpath($logfile);
     return unless defined $rel;
@@ -1514,7 +1525,10 @@ sub read_log {
         @prog = ($p);
     }
 
-    my $path = CoGe::Accessory::Validate::contained_path( $TEMPDIR, @prog, $rel );
+    $CONF = get_defaults() unless defined $CONF;
+    my $root = ( $CONF && $CONF->{TEMPDIR} ) ? $CONF->{TEMPDIR} : $TEMPDIR;
+
+    my $path = CoGe::Accessory::Validate::contained_path( $root, @prog, $rel );
     return unless defined $path && -r $path;
 
     open( my $in, '<', $path ) or return;

@@ -312,19 +312,37 @@ sub gen_body {
             }
         }
         
-        my $drup = $form->param( 'dr' . $i . 'up' ) if defined $form->param( 'dr' . $i . 'up' );
-        my $drdown = $form->param( 'dr' . $i . 'down' ) if defined $form->param( 'dr' . $i . 'down' );
+        # `my $x = EXPR if COND;` is undefined behaviour in Perl: when COND is
+        # false the variable is declared but not assigned, and keeps whatever was
+        # last written to that pad slot. Under mod_perl the script stays resident
+        # per Apache worker, so that value can come from a PREVIOUS REQUEST --
+        # another user's. Measured on the live site 2026-09-15: after priming one
+        # worker with drup1=888888, 83 of 120 requests that carried no distance
+        # parameter at all rendered 888888 instead of the 10000 default below.
+        # A visitor opening a plain GEvo link could silently get someone else's
+        # flank size -- e.g. 5409185, turning a 20 kb comparison into 10.8 Mb.
+        # Declaring first and assigning separately removes the undefined case.
+        my $drup;
+        my $drdown;
+        $drup = $form->param( 'dr' . $i . 'up' ) if defined $form->param( 'dr' . $i . 'up' );
+        $drdown = $form->param( 'dr' . $i . 'down' ) if defined $form->param( 'dr' . $i . 'down' );
         $drup = $form->param( 'drup' . $i ) if defined $form->param( 'drup' . $i );
         $drdown = $form->param( 'drdown' . $i ) if defined $form->param( 'drdown' . $i );
         $drup   = 10000 unless defined $drup;
         $drdown = 10000 unless defined $drdown;
 
-        my $gbaccn = $form->param( "gbaccn" . $i )
+        # Same undefined-behaviour pattern as $drup/$drdown above; these three
+        # also define the analysis window, so a leaked value moves or resizes the
+        # region just as visibly.
+        my $gbaccn;
+        my $gbstart;
+        my $gblength;
+        $gbaccn = $form->param( "gbaccn" . $i )
           if $form->param( "gbaccn" . $i );
-        my $gbstart = $form->param( "gbstart" . $i )
+        $gbstart = $form->param( "gbstart" . $i )
           if $form->param( "gbstart" . $i );
         $gbstart = 1 unless defined $gbstart;
-        my $gblength = $form->param( "gblength" . $i )
+        $gblength = $form->param( "gblength" . $i )
           if defined $form->param( "gblength" . $i );
 	    $gblength = 0 unless defined $gblength;
         my $revy = "checked" if $form->param( 'rev' . $i );
@@ -1293,7 +1311,7 @@ sub run {
     $html .=
       # The rerun hint used to link to get.adobe.com/flashplayer -- Gobe has been SVG
       # rather than Flash for years, so the advice stays and the dead link goes.
-qq{<a href="http://genomevolution.org/wiki/index.php/Gobe" class="small" style="color: red" target=_new>Click here for help!</a>  <span class="small">No results?  Rerun by pressing "Run GEvo Analysis!" again.</span>};
+qq{<a href="https://genomevolution.github.io/p/Gobe" class="small" style="color: red" target=_new>Click here for help!</a>  <span class="small">No results?  Rerun by pressing "Run GEvo Analysis!" again.</span>};
     $html .= $gobe_buttons;
     $html .= qq{<table class=small>};
     $html .= qq{<tr valign=top><td><span class=bold>Alignment reports</span>};
@@ -3991,8 +4009,13 @@ sub add_url_seq {
             }
         }
 
-        my $drup   = $element->{'drup'}   if $element->{'drup'};
-        my $drdown = $element->{'drdown'} if $element->{'drdown'};
+        # Same conditional-`my` leak as in gen_html; see the note there. This is
+        # the merge/restore path, so a leaked window would silently rewrite the
+        # region of a saved link rather than a fresh one.
+        my $drup;
+        my $drdown;
+        $drup   = $element->{'drup'}   if $element->{'drup'};
+        $drdown = $element->{'drdown'} if $element->{'drdown'};
         $drup   = 10000 unless defined $drup;
         $drdown = 10000 unless defined $drdown;
 
@@ -4000,10 +4023,13 @@ sub add_url_seq {
         my $dsgid   = $element->{'dsgid'};
         my $gstid   = $element->{'gstid'};
         my $mask    = $element->{'mask'};
-        my $gbaccn  = $element->{'gbaccn'} if $element->{'gbaccn'};
-        my $gbstart = $element->{'gbstart'} if $element->{'gbstart'};
+        my $gbaccn;
+        my $gbstart;
+        my $gblength;
+        $gbaccn  = $element->{'gbaccn'} if $element->{'gbaccn'};
+        $gbstart = $element->{'gbstart'} if $element->{'gbstart'};
         $gbstart = 1 unless defined $gbstart;
-        my $gblength = $element->{'gblength'} if $element->{gblength};
+        $gblength = $element->{'gblength'} if $element->{gblength};
 
         my $chr = $element->{'chr'} if defined $element->{'chr'};
 
@@ -4712,7 +4738,7 @@ Thank you for using the Genome Evolution Analysis Tool! The results from your la
 } . $server . qq{/GEvo_direct.pl?name=$basefilename
 
 To contact us or to cite CoGe please visit:
-http://genomevolution.org/wiki/index.php/Contact_Page
+https://genomevolution.github.io/p/Contact_Page
 
 You can use this URL for regenerating your results:
 $full_gevo_url
