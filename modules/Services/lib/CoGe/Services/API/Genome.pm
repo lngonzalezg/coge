@@ -5,6 +5,7 @@ use Mojo::JSON qw(decode_json);
 use Data::Dumper;
 
 use CoGe::Accessory::Utils qw(sanitize_name);
+use CoGe::Accessory::Web; # get_command_path, for streaming samtools output
 use CoGe::Core::Favorites;
 use CoGe::Core::Genome qw(genomecmp search_genomes);
 use CoGe::Core::Metadata qw( create_annotation delete_annotation get_annotation get_annotations );
@@ -203,6 +204,65 @@ sub sequence {
     unless (defined $chr and $chr ne '') {
         $self->res->headers->content_type('text/plain');
         $self->res->content->asset(Mojo::Asset::File->new(path => get_genome_file($gid)));
+        $self->rendered(200);
+    }
+    # Whole chromosome, no sub-range: stream it. get_genome_seq() slurps all of
+    # samtools' output into one scalar and render(text=>) then re-encodes and copies
+    # it, which measured ~6.5x the response size in peak RSS (a 253 MB chromosome
+    # took the worker from 113 MB to a 1.6 GB high-water mark). Perl frees that back
+    # to its own arena, never to the OS, so each distinct large request ratchets RSS
+    # upward for the life of the worker. Feeding samtools straight into a
+    # file-backed asset holds only the read buffer.
+    #
+    # The region name is resolved from the .fai index rather than by running
+    # samtools repeatedly against "lcl|$chr" / "$chr" / "gi|$chr" and checking what
+    # came back, which is what get_genome_seq does -- the index lists the exact
+    # names, so one cheap read picks the right one and the retries disappear.
+    # NB: test $format, not $stop. The branch above has already overwritten $stop
+    # with get_chromosome_length($chr), so "no sub-range requested" is no longer
+    # visible in $start/$stop by this point -- $format eq 'fasta' is set in exactly
+    # that branch and nowhere else, so it is the reliable marker.
+    elsif ( defined $format && $format eq 'fasta' && !$strand ) {
+        my $file_path = get_genome_file($gid);
+        my ($region, %names);
+        if ( open my $fai, '<', "$file_path.fai" ) {
+            while (<$fai>) { my ($n) = split /\t/; $names{$n} = 1 }
+            close $fai;
+            ($region) = grep { $names{$_} } ( "lcl|$chr", $chr, "gi|$chr" );
+            # Append the explicit range so the FASTA header is byte-identical to the
+            # old path. get_genome_seq defaults start to 1 and the branch above has
+            # already set $stop to the chromosome length, so it asked samtools for
+            # "<name>:1-<len>" and samtools echoes that into the header. Omitting it
+            # yields ">gi|1" instead of ">gi|1:1-249250621" -- same sequence, but a
+            # 12-byte difference that any client parsing the header would see.
+            $region .= ":1-$stop" if defined $region && defined $stop;
+        }
+        # Unknown chromosome, or no index: fall back to the original path so this
+        # cannot turn a working odd case into a 404.
+        unless ( defined $region ) {
+            return $self->render( text => get_genome_seq(
+                gid => $gid, chr => $chr, start => $start,
+                stop => $stop, strand => $strand, format => $format
+            ) );
+        }
+
+        my $samtools = CoGe::Accessory::Web::get_command_path('SAMTOOLS');
+        my $fh;
+        unless ( open $fh, '-|', $samtools, 'faidx', $file_path, $region ) {
+            # Could not spawn samtools -- fall back rather than fail the request.
+            print STDERR "API::Genome::sequence: samtools faidx failed for $region\n";
+            return $self->render( text => get_genome_seq(
+                gid => $gid, chr => $chr, start => $start,
+                stop => $stop, strand => $strand, format => $format
+            ) );
+        }
+
+        my $asset = Mojo::Asset::File->new;
+        my $buf;
+        $asset->add_chunk($buf) while read( $fh, $buf, 1 << 20 );
+        close $fh;
+        $self->res->headers->content_type('text/plain');
+        $self->res->content->asset($asset);
         $self->rendered(200);
     }
     else {

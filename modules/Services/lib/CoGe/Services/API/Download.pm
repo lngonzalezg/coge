@@ -2,6 +2,7 @@ package CoGe::Services::API::Download;
 
 use Mojo::Base 'Mojolicious::Controller';
 use Mojo::JSON;
+use Mojo::Asset::File;
 
 use File::Spec;
 use File::Slurp;
@@ -115,12 +116,18 @@ sub get {
 
     # Send file
     $self->res->headers->content_disposition("attachment; filename=$filename;") if $attachment; # tell browser to download file
-    my $content;
-    eval {
-        $content = read_file($file_path) if -r $file_path;
-    };
 
-    $self->render(data => $content);
+    # Stream from disk rather than slurping. read_file() pulled the ENTIRE file into
+    # one scalar and render(data=>) then copied it again: this endpoint served a
+    # 3.2 GB GFF on 2026-11-07, so roughly 6.4 GB of peak allocation for a single
+    # request. Perl returns freed memory to its own arena rather than to the OS, so
+    # each large download permanently ratcheted the worker's RSS -- it reached
+    # 216 GB over five days. Mojo::Asset::File writes the response straight from the
+    # file in fixed-size chunks at constant memory. Same pattern already used by
+    # Genome.pm (whole-genome branch) and Job.pm.
+    return $self->render(API_STATUS_NOTFOUND) unless -r $file_path;
+    $self->res->content->asset(Mojo::Asset::File->new(path => $file_path));
+    $self->rendered(200);
 }
 
 1;
