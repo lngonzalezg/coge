@@ -32,6 +32,11 @@ use vars qw(
 
 $PAGE_TITLE = 'LoadGenome';
 
+# CGI.pm 5.x defaults POST_MAX to 128MB (4.x had no limit), which silently refuses
+# larger uploads without reading them -- the browser upload then stalls forever.
+# Raise it for this upload page only; CGI.pm resets it to the default after every
+# request under mod_perl, so other pages keep the 128MB cap.
+$CGI::POST_MAX = 10 * 1024 * 1024 * 1024;    # 10 GiB
 $FORM = new CGI;
 ( $DB, $USER, $CONF, $LINK ) = CoGe::Accessory::Web->init(
     cgi => $FORM,

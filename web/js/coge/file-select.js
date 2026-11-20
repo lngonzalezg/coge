@@ -107,7 +107,17 @@ class FtpSelect {
 			}
 			if (self.options.on_go_finish)
 				self.options.on_go_finish();
-        });
+        }).fail(function() {
+			// Without this the table stayed "busy" and the controls stayed disabled forever.
+			self.table.empty();
+			if (self.toolbar)
+				self.toolbar.css('display', 'none');
+			if (self.path_div)
+				self.path_div.empty();
+			alert("Location not found, or not publicly reachable.");
+			if (self.options.on_go_finish)
+				self.options.on_go_finish();
+		});
     }
 	go_home() {
 		if (!this.at_top())
@@ -344,7 +354,31 @@ var coge = window.coge = (function(namespace) {
 			    		},
 					done:
 						function(e, data) {
+							if (!data.result || data.result.error || !data.result.filename) {
+								var msg = (data.result && data.result.error) ? data.result.error : 'upload failed';
+								self._vilify_file_in_list('file://'+data.files[0].name, msg);
+								return;
+							}
 							self._finish_file_in_list('file', 'file://'+data.result.filename, data.result.path, data.result.size);
+						},
+					// Without this a failed upload (HTTP error, or the server answering with
+					// an HTML page instead of JSON -- e.g. a request over the size limit)
+					// left the spinner running forever.
+					fail:
+						function(e, data) {
+							var status = data.jqXHR ? data.jqXHR.status : 0;
+							var msg;
+							if (data.errorThrown === 'abort')
+								msg = 'upload cancelled';
+							else if (status == 413)
+								msg = 'upload failed: file too large';
+							else if (status)
+								msg = 'upload failed (HTTP ' + status + ')';
+							else if (data.textStatus === 'parsererror')
+								msg = 'upload failed: file may be too large, or your session expired';
+							else
+								msg = 'upload failed: connection lost';
+							self._vilify_file_in_list('file://'+data.files[0].name, msg);
 						}
 				});
             }
@@ -417,6 +451,8 @@ var coge = window.coge = (function(namespace) {
 		},
 
 		_vilify_file_in_list: function(url, error) {
+			var self = this; // was missing: 'self' resolved to window.self and this always threw
+
 			// Find item in list and set error
 			var file = self._find_file_in_list(url);
 			if (!file) {
@@ -827,11 +863,26 @@ var coge = window.coge = (function(namespace) {
 						}
 					);
 				})
-				.fail(function() {
-					//TODO
+				.fail(function(jqXHR) {
+					// Previously a TODO: the spinner and the disabled Go button stayed forever.
+					var status = jqXHR ? jqXHR.status : 0;
+					var msg;
+					if (status == 404)
+						msg = 'File not found, or the URL is not publicly reachable (localhost and internal addresses are not allowed).';
+					else if (status == 403)
+						msg = 'The server refused this URL (localhost and internal addresses are not allowed).';
+					else if (status == 401)
+						msg = 'Your session has expired, please log in again.';
+					else if (status)
+						msg = 'Could not retrieve the URL (HTTP ' + status + ').';
+					else
+						msg = 'Could not contact the server.';
+					$('#ftp_status').html('<span style="color:red;">' + msg + '</span>');
+					$('#ftp_get_button').removeClass('ui-state-disabled');
+					$('#input_url').prop('disabled', false); // fetch_start() disabled it; let the user correct the URL
 				});
 		},
-		
+
 		_load_from_ncbi: function() {
 			var self = this;
 			

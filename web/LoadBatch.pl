@@ -31,6 +31,8 @@ use vars qw(
 
 $PAGE_TITLE = 'LoadBatch';
 
+# Upload page: allow 10 GiB (CGI.pm 5.x default is 128MB). See LoadGenome.pl.
+$CGI::POST_MAX = 10 * 1024 * 1024 * 1024;    # 10 GiB
 $FORM = new CGI;
 ( $DB, $USER, $CONF, $LINK ) = CoGe::Accessory::Web->init(
     cgi => $FORM,
