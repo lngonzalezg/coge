@@ -860,6 +860,11 @@ sub update_genome_info {
     my $genome = $DB->resultset('Genome')->find($gid);
     return "Error: can't find genome." unless ($genome);
 
+    # This had no permission check: anyone, even logged out, could rename any genome
+    # or flip it public/private by gid. Same rule as the Edit Info / Make Public
+    # buttons (USER_CAN_EDIT): admin, owner or editor.
+    return "Error: permission denied." unless $genome->is_editable($USER);
+
     my $organism = $DB->resultset('Organism')->find( { name => $org_name } );
     return "Error: can't find organism." unless ($organism);
 

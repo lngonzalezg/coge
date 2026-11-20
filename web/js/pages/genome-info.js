@@ -669,11 +669,26 @@ function update_genome_info (){
 }
 
 function make_genome_public () {
-	coge.services.update('genome', GENOME_ID, {metadata: {restricted: 0}}).done(function() {get_genome_info();});
+	coge.services.update('genome', GENOME_ID, {metadata: {restricted: 0}})
+		.done(function() {get_genome_info();})
+		.fail(function(jqXHR) { alert_update_failed(jqXHR, 'make this genome public'); });
 }
 
 function make_genome_private () {
-	coge.services.update('genome', GENOME_ID, {metadata: {restricted: 1}}).done(function() {get_genome_info();});
+	coge.services.update('genome', GENOME_ID, {metadata: {restricted: 1}})
+		.done(function() {get_genome_info();})
+		.fail(function(jqXHR) { alert_update_failed(jqXHR, 'make this genome private'); });
+}
+
+// Previously a refused update failed silently and the page just re-rendered unchanged.
+function alert_update_failed (jqXHR, action) {
+	var msg = 'Could not ' + action + '.';
+	var err = jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.error;
+	if (err)
+		msg += ' ' + (err.message || err.Auth || err.Error || '');
+	else if (jqXHR && jqXHR.status)
+		msg += ' (HTTP ' + jqXHR.status + ')';
+	alert(msg);
 }
 
 function delete_genome () {

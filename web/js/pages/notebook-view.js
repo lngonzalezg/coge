@@ -69,7 +69,13 @@ function get_notebook_info() {
 function make_notebook_public(public) {
     if (typeof public === 'undefined')
         public = true;
-	coge.services.update('notebook', NOTEBOOK_ID, {metadata: {restricted: !public}}).done(get_notebook_info);
+	coge.services.update('notebook', NOTEBOOK_ID, {metadata: {restricted: !public}})
+		.done(get_notebook_info)
+		.fail(function(jqXHR) { // previously a refused update failed silently
+			var err = jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.error;
+			alert('Could not make this notebook ' + (public ? 'public' : 'private') + '.' +
+				(err ? ' ' + (err.message || err.Auth || err.Error || '') : (jqXHR && jqXHR.status ? ' (HTTP ' + jqXHR.status + ')' : '')));
+		});
 }
 
 function add_list_items(opts) {

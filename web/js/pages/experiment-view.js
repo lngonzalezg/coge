@@ -89,11 +89,26 @@ function get_sources () {
 }
 
 function make_experiment_public () {
-	coge.services.update('experiment', EXPERIMENT_ID, {metadata: {restricted: 0}}).done(function() {get_experiment_info();});
+	coge.services.update('experiment', EXPERIMENT_ID, {metadata: {restricted: 0}})
+		.done(function() {get_experiment_info();})
+		.fail(function(jqXHR) { alert_update_failed(jqXHR, 'make this experiment public'); });
 }
 
 function make_experiment_private () {
-	coge.services.update('experiment', EXPERIMENT_ID, {metadata: {restricted: 1}}).done(function() {get_experiment_info();});
+	coge.services.update('experiment', EXPERIMENT_ID, {metadata: {restricted: 1}})
+		.done(function() {get_experiment_info();})
+		.fail(function(jqXHR) { alert_update_failed(jqXHR, 'make this experiment private'); });
+}
+
+// Previously a refused update failed silently and the page just re-rendered unchanged.
+function alert_update_failed (jqXHR, action) {
+	var msg = 'Could not ' + action + '.';
+	var err = jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.error;
+	if (err)
+		msg += ' ' + (err.message || err.Auth || err.Error || '');
+	else if (jqXHR && jqXHR.status)
+		msg += ' (HTTP ' + jqXHR.status + ')';
+	alert(msg);
 }
 
 function add_tag_to_experiment () {

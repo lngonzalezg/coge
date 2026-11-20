@@ -413,13 +413,29 @@ sub update {
     return unless $genome;
 
     my $data = $self->req->json;
+    my $meta = ( $data && ref $data->{metadata} eq 'HASH' ) ? $data->{metadata} : {};
     # §7.7 Allowlist the client-writable fields. Mass-assigning the raw metadata
-    # let an owner-editor set restricted/deleted/certified (trust badge) and
-    # creator_id (ownership) -- those are power-user/admin/system-managed and go
-    # through their own authorized paths, not this generic update.
-    my %allowed = map { $_ => 1 } qw(name description version link);
-    my %fields  = map { ($_ => $data->{metadata}->{$_}) }
-                  grep { exists $data->{metadata}->{$_} } keys %allowed;
+    # let an owner-editor set deleted/certified (trust badge) and creator_id
+    # (ownership) -- those are admin/system-managed and stay out of this update.
+    # 'restricted' (public/private) IS allowed: policy decided 2026-11-19 is that
+    # owners, editors and admins may publish/unpublish, which is exactly who
+    # _get_genome($id, 1, ...) above lets through. Without it the GenomeInfo
+    # "Make Public"/"Make Private" buttons silently did nothing.
+    my %allowed = map { $_ => 1 } qw(name description version link restricted);
+
+    # Refuse, rather than silently drop, anything else: the old behaviour returned
+    # success for an ignored field, so the page reported a change that never happened.
+    my @refused = sort grep { !$allowed{$_} } keys %$meta;
+    if (@refused) {
+        $self->render(API_STATUS_CUSTOM(400, "Field(s) not editable here: " . join(', ', @refused)));
+        return;
+    }
+
+    my %fields  = map { ($_ => $meta->{$_}) } grep { exists $meta->{$_} } keys %allowed;
+    if ( exists $fields{restricted} ) {    # normalise 0/1, true/false, "true"/"false"
+        my $r = $fields{restricted};
+        $fields{restricted} = ( $r && "$r" ne 'false' ) ? 1 : 0;
+    }
     $genome->update(\%fields) if %fields;
 	$self->render(json => { success => Mojo::JSON->true });
 }

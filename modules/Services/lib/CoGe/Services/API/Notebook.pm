@@ -310,11 +310,21 @@ sub update {
     return unless $notebook;
 
     my $data = $self->req->json;
+    my $meta = ( $data && ref $data->{metadata} eq 'HASH' ) ? $data->{metadata} : {};
     # §7.7 Allowlist client-writable fields (see Genome::update); never
-    # mass-assign restricted/creator_id.
-    my %allowed = map { $_ => 1 } qw(name description);
-    my %fields  = map { ($_ => $data->{metadata}->{$_}) }
-                  grep { exists $data->{metadata}->{$_} } keys %allowed;
+    # mass-assign creator_id. 'restricted' is allowed: owners, editors and
+    # admins (who _get_notebook($id, 1, ...) lets through) may publish.
+    my %allowed = map { $_ => 1 } qw(name description restricted);
+    my @refused = sort grep { !$allowed{$_} } keys %$meta;
+    if (@refused) {    # refuse, don't silently drop and report success
+        $self->render(API_STATUS_CUSTOM(400, "Field(s) not editable here: " . join(', ', @refused)));
+        return;
+    }
+    my %fields  = map { ($_ => $meta->{$_}) } grep { exists $meta->{$_} } keys %allowed;
+    if ( exists $fields{restricted} ) {    # normalise 0/1, true/false, "true"/"false"
+        my $r = $fields{restricted};
+        $fields{restricted} = ( $r && "$r" ne 'false' ) ? 1 : 0;
+    }
     $notebook->update(\%fields) if %fields;
 	$self->render(json => { success => Mojo::JSON->true });
 }
