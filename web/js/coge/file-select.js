@@ -349,11 +349,24 @@ var coge = window.coge = (function(namespace) {
 						    		load_id: self.loadId
 						    	}});
 
+								var file = self._find_file_in_list('file://'+filename);
+								if (file)
+									file.uploadStart = Date.now();
+
 								data.submit(); // what is this?
 							}
 			    		},
+					// Show bytes sent / total, rate and time left on the file's row.
+					// Large uploads from off-campus run at the user's uplink speed
+					// (~2.5 MB/s measured), so a 1 GB file takes minutes; without this
+					// the row showed only a spinner for the whole time.
+					progress:
+						function(e, data) {
+							self._show_upload_progress('file://'+data.files[0].name, data.loaded, data.total);
+						},
 					done:
 						function(e, data) {
+							self._clear_upload_progress('file://'+data.files[0].name);
 							if (!data.result || data.result.error || !data.result.filename) {
 								var msg = (data.result && data.result.error) ? data.result.error : 'upload failed';
 								self._vilify_file_in_list('file://'+data.files[0].name, msg);
@@ -802,6 +815,48 @@ var coge = window.coge = (function(namespace) {
 				return Math.ceil(val/(1024*1024*1024)) + 'G';
 		},
 		
+		_show_upload_progress: function(url, loaded, total) {
+			var file = this._find_file_in_list(url);
+			if (!file || !file.tr || !total)
+				return;
+
+			var span = file.tr.find('.upload-progress');
+			if (!span.length) {
+				span = $('<span class="upload-progress" style="margin-left:15px; color:dimgray;"></span>');
+				file.tr.children().first().append(span);
+			}
+
+			var fmt = function(bytes) { // decimal units, as macOS/browsers show file sizes
+				if (bytes >= 1e9) return (bytes / 1e9).toFixed(2) + ' GB';
+				if (bytes >= 1e6) return (bytes / 1e6).toFixed(bytes < 1e7 ? 1 : 0) + ' MB';
+				return Math.round(bytes / 1e3) + ' KB';
+			};
+			var pct = Math.floor(loaded * 100 / total);
+			var text = fmt(loaded) + ' of ' + fmt(total) + ' (' + pct + '%)';
+
+			if (loaded >= total) {
+				text += ' \u2013 saving on server\u2026'; // server still has to store the file
+			}
+			else if (file.uploadStart) {
+				var secs = (Date.now() - file.uploadStart) / 1000;
+				if (secs >= 3 && loaded > 0) { // too noisy to estimate in the first seconds
+					var rate = loaded / secs;  // average since start: steady on a saturated uplink
+					var left = Math.round((total - loaded) / rate);
+					var eta = left >= 3600 ? Math.floor(left / 3600) + ' h ' + Math.round((left % 3600) / 60) + ' min'
+							: left >= 60 ? Math.floor(left / 60) + ' min ' + (left % 60) + ' s'
+							: left + ' s';
+					text += ' \u00b7 ' + fmt(rate) + '/s \u00b7 about ' + eta + ' left';
+				}
+			}
+			span.text(text);
+		},
+
+		_clear_upload_progress: function(url) {
+			var file = this._find_file_in_list(url);
+			if (file && file.tr)
+				file.tr.find('.upload-progress').remove();
+		},
+
 		_find_file_in_list: function(url) {
 			return this.selectedFiles.filter(
 				function(file) {
