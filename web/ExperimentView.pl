@@ -107,6 +107,10 @@ sub update_experiment_info {
     my $version   = $opts{version};
 
     my $exp = $DB->resultset('Experiment')->find($eid);
+    return "Error: experiment not found." unless $exp;
+    # Was unchecked: anyone, even logged out, could edit any experiment by eid.
+    # Same rule as the Edit Info button: admin, owner or editor.
+    return "Error: permission denied." unless $exp->is_editable($USER);
     $exp->name($name);
     $exp->description($desc) if $desc;
     $exp->version($version);

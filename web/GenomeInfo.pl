@@ -6,7 +6,7 @@ use CoGeX;
 use CoGeX::Result::Genome qw(ERROR LOADING);
 use CoGe::JEX::Jex;
 use CoGe::Accessory::Web;
-use CoGe::Accessory::Validate qw(valid_filename);
+use CoGe::Accessory::Validate qw(valid_filename valid_id);
 use CoGe::Accessory::Utils qw(sanitize_name get_unique_id commify execute);
 use CoGe::Accessory::IRODS qw(irods_iput irods_imeta_add);
 use CoGe::Core::Chromosomes;
@@ -732,22 +732,41 @@ sub get_chromosomes { #TODO use API Genome Fetch
 	return $html;	
 }
 
+# Cache path for one chromosome's FASTA, shared by cache_chr_fasta, export_file_chr
+# and (by the same formula) get_seq_for_chr.pl. Returns (dir, file) or () when gid/chr
+# are not safe single path components -- they used to be interpolated unchecked.
+sub _chr_fasta_path {
+    my ( $gid, $chr ) = @_;
+    my $vgid = valid_id($gid);
+    my $vchr = valid_filename($chr);
+    return unless defined $vgid && defined $vchr && $vchr eq $chr;
+    my $dir = catdir( $config->{SECTEMPDIR}, 'downloads/genome', $vgid );
+    return ( $dir, catfile( $dir, $vgid . '_' . $vchr . '.faa' ) );
+}
+
 sub cache_chr_fasta { #FIXME remove this, use API genome/sequence
     my %opts  = @_;
     my $gid = $opts{gid};
     my $chr = $opts{chr};
 
-    my $path = catfile($config->{SECTEMPDIR}, "downloads/genome", $gid);
+    # Was: no access check (anyone could make the server write whole chromosomes of
+    # any genome, incl. restricted ones, to /scratch) and gid/chr went into the path
+    # unvalidated. Now: valid ids only, access to the genome required, real
+    # chromosomes only (bounds the cache to one file per existing chromosome).
+    my ( $path, $file ) = _chr_fasta_path( $gid, $chr );
+    return "Error: invalid request." unless defined $file;
+
+    my $genome = $DB->resultset('Genome')->find($gid);
+    return "Error: genome not found." unless ($genome);
+    return "Error: permission denied." unless $USER->has_access_to_genome($genome);
+    return "Error: no such chromosome." unless $genome->get_chromosome_length($chr);
+
 	mkpath( $path, 0, 0777 ) unless -d $path;
-    my $file = catfile($path, $gid . "_" . $chr . ".faa");
 	my %json;
-	$json{file} = $file;
+	$json{file} = basename($file);    # the server path is no longer sent to the browser
     if (-e $file) {
     	return encode_json(\%json);
     }
-
-    my $genome = $DB->resultset('Genome')->find($gid);
-    return "unable to create genome object using id $gid" unless ($genome);
 
 	# Get sequence from file
 	my $seq = $genome->get_genomic_sequence(
@@ -1260,6 +1279,12 @@ sub copy_genome {
         return 'Not logged in';
     }
 
+    # Was: only "logged in" was checked, so any account could copy a RESTRICTED
+    # genome by gid and become owner of the copy. Require read access to the source.
+    my $source = valid_id($gid) ? $DB->resultset('Genome')->find($gid) : undef;
+    return 'Genome not found' unless $source;
+    return 'Permission denied' unless $USER->has_access_to_genome($source);
+
     my $desc = $mask ? "Copying and masking genome" : "Copying genome";
     $desc .= " (no annotations)" if $seq_only;
 
@@ -1455,14 +1480,22 @@ sub export_fasta { #TODO migrate to API
 sub export_file_chr { #TODO migrate to API
     my %args = @_;
     my $dsg = $DB->resultset('Genome')->find($args{gid});
-    my $file = $args{file};
 #    print STDERR Dumper \%args;
 
-    # # ensure user is logged in
-    # return $ERROR if $USER->is_public;
-
     # ensure user has permission
-    return $ERROR unless $USER->has_access_to_genome($dsg);
+    return $ERROR unless $dsg && $USER->has_access_to_genome($dsg);
+
+    # Was: my $file = $args{file} -- a path supplied by the browser, exported to the
+    # caller's iRODS home with no check that it belonged to this genome. Any
+    # logged-in user could copy any file www-data can read (coge.conf with the DB
+    # credentials, restricted genomes on /storage) into their own iRODS. The path
+    # is now derived from gid + chr only, and the client's 'file' is ignored.
+    my ( undef, $file ) = _chr_fasta_path( $args{gid}, $args{chr} );
+    return $ERROR unless defined $file;
+    unless ( -r $file ) {    # make sure the cache exists (also re-checks access)
+        my $res = cache_chr_fasta( gid => $args{gid}, chr => $args{chr} );
+        return $ERROR unless -r $file;
+    }
 
     my $md = get_irods_metadata($dsg);
 

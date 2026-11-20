@@ -56,6 +56,10 @@ function update_experiment_info () {
             link: link
         },
         success : function(val) {
+            if (typeof val === 'string' && val.indexOf('Error') === 0) {
+                alert(val);
+                return;
+            }
             get_experiment_info();
             $("#experiment_info_edit_box").dialog('close');
         }
